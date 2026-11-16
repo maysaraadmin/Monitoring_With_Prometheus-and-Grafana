@@ -1,5 +1,85 @@
 # Handoff
 
+## Sprint 1 Handoff: secure the stack (2026-11-16)
+**Status:** ⚠️ Done with gaps
+**Commit / PR:** on branch `sprint-1-secure-the-stack`, recorded by the follow-up commit. Not
+pushed and not merged — awaiting the user's go-ahead.
+
+### Delivered
+- **F1.1 Stop publishing the ports that nothing needs** — ACs passing: 3/4
+  - `node-exporter` and `blackbox` have no `ports:` block at all now. Prometheus reaches them as `node-exporter:9100` and `blackbox:9115` on the `monitoring` network, which is how it always worked; the host ports were never needed by anything.
+  - `prometheus`, `alertmanager` and `grafana` are bound to `127.0.0.1`.
+  - Each binding carries a comment saying *why* it is loopback-only, so a later edit does not silently undo it. The blackbox comment says outright that it is the most important line in the file.
+  - AC1.1.2 is **unverified** — it needs a second device on the LAN. See below.
+- **F1.2 Drop the Prometheus lifecycle API** — ACs passing: 1/2, one partial
+  - `--web.enable-lifecycle` removed; `POST /-/reload` now returns 403. Recorded as D-013.
+- **F1.3 Real Grafana credentials from an untracked file** — ACs passing: 4/4
+  - `.env.local`, untracked, holds a generated 24-character password, wired in with `env_file:`, plus `GF_USERS_ALLOW_SIGN_UP=false`. `.env.local.example` is committed with placeholders only.
+- **F1.4 Get the placeholder credential files out of the repo** — ACs passing: 2/3
+  - `.gitignore` added for `.env`, `.env.local` and `secrets/`. `.env` and `config` untracked with `git rm --cached` and deleted from disk — nothing referenced either of them. The `./alertmanager:/config` mount in the compose file is a directory and unrelated.
+  - `alertmanager.yml` now uses `auth_password_file: /run/secrets/smtp_password`, mounted from the untracked `./secrets`, so Sprint 2 has nowhere convenient to commit a real password.
+  - AC1.4.3 **failed**. See below.
+
+### Not delivered / deferred
+- **AC1.4.3 failed, and is not achievable as specified.** The plan assumed Alertmanager would refuse to start with the secret file missing. It does not: it starts normally and `amtool check-config` reports SUCCESS, because `auth_password_file` is read at notify time, not at config load. A missing or placeholder secret is therefore completely silent — the stack looks healthy while being unable to send a single alert. Logged as **I-011**. The fix is not in Alertmanager; it is the startup placeholder check already planned as F5.3 / S5.2, and this finding is the argument for it.
+- **AC1.1.2 not run.** Proving the ports are closed *from outside* needs a second device on the network, which was not available. T1.S1 was run as the strongest available substitute: the host's own `netstat` shows exactly three LISTENING sockets, all on `127.0.0.1` (3001, 9090, 9093), with 9100 and 9115 absent entirely. That is good evidence but not the same check — it confirms what this host believes, not what a peer sees. **Run T1.2 before relying on the claim.**
+- **AC1.2.2 partial.** Restart-based reload was exercised and `promtool check config` passes afterwards, but no scrape-interval change was actually made, so the full round trip is unproven.
+
+### Tests
+Config validators 4/4 · Integration 9/10 with 1 partial · Security 3/3 · Manual 0/1 not run
+**Sprint 1: 13 scenario rows — 11 passing, 1 partial, 1 failed, 1 not run.** Counted 2026-11-16.
+
+All four validators pass after the change: `promtool check config` (valid, 1 rule file),
+`promtool check rules` (4 rules), `amtool check-config` (SUCCESS), `docker compose config`
+(exit 0, with the known obsolete-`version:` warning, G-010).
+
+### Security
+- **Five Sprint 0 threats closed:** S0.1 (Prometheus unauthenticated plus lifecycle API), S0.2 (Grafana default credentials), S0.4 (blackbox SSRF relay), S0.5 (Alertmanager silences), S0.6 (node-exporter disclosure).
+- **S0.3 is only partly closed.** The placeholders are untracked and Alertmanager reads a file now, but **git history still contains them**. Harmless, since they were never real values, and not worth rewriting history for. Sprint 2 still has to put a real password somewhere, and that is when the control is tested for real.
+- **S0.7 untouched**, deliberately — it belongs to Sprint 2.
+- All three Sprint 1 security tests passed, and two earned their place rather than rubber-stamping the work:
+  - **T1.S2** — `admin`/`admin` returned **200** after `GF_SECURITY_ADMIN_PASSWORD` was set, because Grafana had already initialised its database and ignores the variable from then on. S1.2 predicted precisely this. The password had to be changed through the API. Had the test only asked "does the new password work", it would have passed while the old one still worked.
+  - **T1.S3** — run in the required order, and it **failed before** `git rm --cached`, confirming that `.gitignore` alone does not untrack an already-tracked file.
+
+### Deviations from plan
+- AC1.2.1 expected 405 or 404 from the disabled reload endpoint; Prometheus returns **403**. The control works; the plan's expected value was wrong and has been corrected in place in `docs/Implementation.md` rather than left to mislead the next reader.
+- AC1.4.3's premise was wrong about how Alertmanager behaves. The criterion is left in the plan marked ❌ with the reason, not quietly deleted.
+- The `.env` file was **deleted**, not merely untracked. It held only commented-out placeholders referring to `${ADMIN_USER}` and `${ADMIN_PASSWORD}`, and the compose block that used them is gone, so it was a decoy. `secrets/` was added as a new gitignored directory, which the plan implied but did not name.
+- Recreating the stack hit a transient `bind: Only one usage of each socket address` on 9093 — the old container's socket in `TIME_WAIT`. A second `docker compose up -d` succeeded. Worth a line in the Sprint 5 runbook.
+
+### Known issues & tech debt
+- **I-011** (new, Medium): a missing or placeholder SMTP secret is silent. Fix planned as F5.3.
+- The Grafana password now lives in two places that have to agree: `.env.local`, which is only read on a fresh database, and Grafana's own database, which is what actually authenticates. Anyone changing it must change it through the API *and* update `.env.local`, or deleting `grafana_data` later silently reverts to the `.env.local` value.
+- `grafana` still runs `user: '0'`. Out of scope this sprint, still worth testing whether it can be dropped now that a named volume is in use.
+- All five images are still `latest` (G-008, S0.9) — Sprint 4.
+
+### How to run / demo
+```
+docker compose up -d
+```
+- Grafana **http://localhost:3001** — user `admin`, password in `.env.local` (untracked: `grep GF_SECURITY_ADMIN_PASSWORD .env.local`). `admin`/`admin` is now rejected.
+- Prometheus **http://localhost:9090** and Alertmanager **http://localhost:9093** — both loopback-only.
+- node-exporter and blackbox have **no host port**. To reach them: `docker exec prometheus wget -qO- http://node-exporter:9100/metrics`.
+- Validators: see "How to run" in `docs/Implementation.md`. Git Bash on Windows needs `MSYS_NO_PATHCONV=1`.
+- From a clean checkout: `cp .env.local.example .env.local` and set a password, then `mkdir -p secrets` and write the Gmail app password into `secrets/smtp_password`.
+
+### Next sprint should know
+- **Sprint 2 is where S0.3 actually gets tested.** Everything Sprint 1 did was preparation; the only remaining way to leak a credential is to type it into a tracked file by hand. Put the Gmail app password in `secrets/smtp_password` and nowhere else, and check `git status` before committing.
+- **I-011 changes Sprint 2's shape.** Do not treat "Alertmanager started and the config validates" as evidence that notifications can be sent — Sprint 1 proved those two are independent. AC2.4.1 and AC2.5.1 are the criteria that mean anything.
+- `secrets/smtp_password` currently holds the literal string `replace-with-your-gmail-app-password`. It is a placeholder, and nothing will warn about it. That is I-011.
+- The loopback bindings already carry explanatory comments in `docker-compose.yml`. F5.2 was planned to add those; **that half is done** — F5.2's remaining work is the automated check, not the comments.
+- Nothing in Sprint 1 touched the alert rules, so all five permanently-firing alerts are still firing, including the always-true memory rule (G-002).
+
+### Metrics
+ACs passed first run: 10/13 · corrected or re-run to passing: 2 (AC1.3.1 after the API password
+change, AC1.2.1 after fixing the expected status code) · failed: 1 (AC1.4.3) · not run: 1
+(AC1.1.2) · User-reported issues since last sprint: 1 (containers not monitored, now Sprint 6) ·
+Open security findings: 4 of the baseline 9 remain (S0.3 partial, S0.7, S0.8, S0.9) · New issues
+found by this sprint: 1 (I-011) · Tests: 13 Sprint 1 rows, 11 passing. Counted 2026-11-16.
+
+### Review
+(the planner's notes after reviewing the diff)
+
 ## Sprint 0 Handoff: baseline (2026-11-16)
 **Status:** ⚠️ Done with gaps
 **Commit / PR:** docs are commit `6e81e92`; the config fixes that preceded them are `d052b8e`.

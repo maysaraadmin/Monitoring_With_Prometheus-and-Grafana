@@ -146,3 +146,20 @@ restrict the API (S6.1). Sprint 6 must not publish a port (AC6.1.1, AC6.4.4) and
 between the raw socket and a read-only proxy (F6.4). Six of the 11 containers belong to
 unrelated projects; monitoring them means this repo holds an inventory of them.
 **Status:** Active — Sprint 6 planned, nothing built
+
+## D-013 Config reload by restart, not by the lifecycle API (2026-11-16)
+**Decision:** Prometheus runs without `--web.enable-lifecycle`. To apply a config or rule
+change, run `docker compose restart prometheus`.
+**Why:** The flag exposes `POST /-/reload` to anyone who can reach port 9090, and Prometheus has
+no authentication. Sprint 1 bound the port to loopback as well, but the flag was removed too
+because defence in depth costs nothing here: a restart of this stack takes about two seconds and
+there is no reload workflow that needs the endpoint.
+**Verified:** `POST /-/reload` now returns **403**, not the 405 or 404 the plan predicted. The
+plan's expected value was wrong and has been corrected in `docs/Implementation.md` (AC1.2.1).
+**Consequence to respect:** A restart drops the in-memory state Prometheus has not yet written
+to disk, which is seconds of samples, not hours. If Sprint 4 chooses a long retention this is
+still safe; the TSDB is on a named volume.
+**Rejected alternatives:** Keeping the flag because loopback binding already protects it — true,
+but it is one more thing that has to stay true. A `SIGHUP` instead — same effect as a restart,
+and less obvious to a reader.
+**Status:** Active

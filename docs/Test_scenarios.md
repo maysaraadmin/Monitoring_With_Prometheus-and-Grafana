@@ -75,26 +75,26 @@ it is marked *(manual)* in `docs/Implementation.md` and carries a `T0.x` row her
 ## Sprint 1 — Secure the stack
 | ID | Covers | Type | Scenario | Expected | Status |
 |---|---|---|---|---|---|
-| T1.1 | AC1.1.1 | integration | `docker compose ps --format '{{.Ports}}'` and grep for `0.0.0.0` and `::` | no match | ⬜ |
-| T1.2 | AC1.1.2 | integration | from a second device on the LAN, curl ports 3001, 9090, 9093, 9100, 9115 on this host's LAN IP | all refused or timed out | ⬜ *(manual — needs a second device)* |
-| T1.3 | AC1.1.3, S1.4 | integration | after unpublishing 9100 and 9115, read `/api/v1/targets` | `node` and `blackbox` targets still `up` | ⬜ |
-| T1.4 | AC1.1.4 | integration | on this host, curl `http://localhost:3001/api/health` | HTTP 200 | ⬜ |
-| T1.5 | AC1.2.1 | integration | `curl -XPOST http://localhost:9090/-/reload` with the lifecycle flag removed | 405 or 404, and the config is not reloaded | ⬜ |
-| T1.6 | AC1.2.2 | integration | change the scrape interval, `docker compose restart prometheus`, read `/api/v1/status/config` | the new value is in effect | ⬜ |
-| T1.7 | AC1.3.1 | integration | `curl -u admin:admin http://localhost:3001/api/datasources` | 401 | ⬜ |
-| T1.8 | AC1.3.2 | integration | same call with the chosen password | 200 | ⬜ |
-| T1.9 | AC1.3.3 | integration | fetch the login page and grep for a sign-up link | no link present | ⬜ |
-| T1.10 | AC1.3.4 | static | `git status --short` with `.env.local` present and populated | `.env.local` is not listed | ⬜ |
-| T1.11 | AC1.4.1 | static | `git ls-files \| grep -E '^(\.env\|config)$'` | no match | ⬜ |
-| T1.12 | AC1.4.2 | static | `amtool check-config /config/alertmanager.yml` with `auth_password_file` in use | SUCCESS | ⬜ |
-| T1.13 | AC1.4.3 | integration | start Alertmanager with the secret file missing | exits with an error naming the missing file, rather than starting unauthenticated | ⬜ |
+| T1.1 | AC1.1.1 | integration | `docker compose ps --format '{{.Ports}}'` and grep for `0.0.0.0` and `::` | no match | ✅ only 127.0.0.1 bindings for 9090, 9093, 3001; 9100 and 9115 not published at all |
+| T1.2 | AC1.1.2 | integration | from a second device on the LAN, curl ports 3001, 9090, 9093, 9100, 9115 on this host's LAN IP | all refused or timed out | ⬜ **not run** — no second device available. T1.S1 run instead; this is still the only test that proves the claim from outside |
+| T1.3 | AC1.1.3, S1.4 | integration | after unpublishing 9100 and 9115, read `/api/v1/targets` | `node` and `blackbox` targets still `up` | ✅ both `up`; also confirmed by scraping each from inside the Prometheus container |
+| T1.4 | AC1.1.4 | integration | on this host, curl `http://localhost:3001/api/health` | HTTP 200 | ✅ |
+| T1.5 | AC1.2.1 | integration | `curl -XPOST http://localhost:9090/-/reload` with the lifecycle flag removed | refused without reloading | ✅ returns **403**, not the 405/404 the plan guessed. AC corrected in place |
+| T1.6 | AC1.2.2 | integration | change the scrape interval, `docker compose restart prometheus`, read `/api/v1/status/config` | the new value is in effect | ⚠️ partial: restart-based reload exercised and `promtool check config` passes after it, but no interval change was made, so the full round trip is unproven |
+| T1.7 | AC1.3.1 | integration | `curl -u admin:admin http://localhost:3001/api/datasources` | 401 | ✅ **after** the API password change. Failed first with 200, confirming S1.2 |
+| T1.8 | AC1.3.2 | integration | same call with the chosen password | 200 | ✅ |
+| T1.9 | AC1.3.3 | integration | fetch the login page and grep for a sign-up link | no link present | ✅ `disableUserSignUp: true` in the frontend settings |
+| T1.10 | AC1.3.4 | static | `git status --short` with `.env.local` present and populated | `.env.local` is not listed | ✅ neither `.env.local` nor `secrets/` appears |
+| T1.11 | AC1.4.1 | static | `git ls-files \| grep -E '^(\.env\|config)$'` | no match | ✅ |
+| T1.12 | AC1.4.2 | static | `amtool check-config /config/alertmanager.yml` with `auth_password_file` in use | SUCCESS | ✅ |
+| T1.13 | AC1.4.3 | integration | start Alertmanager with the secret file missing | exits with an error naming the missing file, rather than starting unauthenticated | ❌ **ran and failed.** Alertmanager started normally and `amtool check-config` reported SUCCESS with the file absent — it reads the file at notify time. Not fixable in Alertmanager; see I-011 and F5.3 |
 
 ### Security tests
 | ID | Covers threat | Scenario | Expected | Status |
 |---|---|---|---|---|
-| T1.S1 | S1.1 | assert the bind address from outside the container (`docker compose ps`, plus `netstat` on the host), not by reading the YAML | every listener on 127.0.0.1 only | ⬜ |
-| T1.S2 | S1.2 | with the existing Grafana volume in place, set the new password and then attempt `admin`/`admin` | rejected — proving the env var took effect rather than being ignored on an initialised database | ⬜ |
-| T1.S3 | S1.3 | `git ls-files` after adding `.gitignore` but before `git rm --cached` | the test must FAIL at that point, proving ignoring alone does not untrack; then passes after `git rm --cached` | ⬜ |
+| T1.S1 | S1.1 | assert the bind address from outside the container (`docker compose ps`, plus `netstat` on the host), not by reading the YAML | every listener on 127.0.0.1 only | ✅ host `netstat` shows exactly three LISTENING sockets, all `127.0.0.1` (3001, 9090, 9093). 9100 and 9115 absent |
+| T1.S2 | S1.2 | with the existing Grafana volume in place, set the new password and then attempt `admin`/`admin` | rejected — proving the env var took effect rather than being ignored on an initialised database | ✅ and it earned its place: `admin`/`admin` returned **200** with the env var set, so the env var alone was not enough |
+| T1.S3 | S1.3 | `git ls-files` after adding `.gitignore` but before `git rm --cached` | the test must FAIL at that point, proving ignoring alone does not untrack; then passes after `git rm --cached` | ✅ ran in that order: `.env` and `config` were still tracked after `.gitignore` alone, then untracked |
 
 ## Sprint 2 — Correct the alert rules and deliver notifications
 | ID | Covers | Type | Scenario | Expected | Status |

@@ -21,8 +21,9 @@ services:
       - '--path.rootfs=/rootfs'
       - '--path.sysfs=/host/sys'
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-    ports:
-      - 9100:9100
+    # No published port, deliberately (S0.6). Prometheus scrapes it as
+    # node-exporter:9100 over the `monitoring` network. Publishing it again
+    # exposes a host inventory to anyone on the LAN. See docs/Decisions.md D-010.
     networks:
       - monitoring
 
@@ -38,9 +39,13 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
-      - '--web.enable-lifecycle'
+    # --web.enable-lifecycle removed deliberately (S0.1): it let any caller
+    # POST /-/reload. Reload config with `docker compose restart prometheus`.
     ports:
-      - 9090:9090
+      # Loopback only, deliberately (S0.1). Prometheus has no authentication
+      # of any kind; 0.0.0.0 hands every metric and the reload endpoint to the
+      # LAN. See docs/Decisions.md D-010.
+      - 127.0.0.1:9090:9090
     networks:
       - monitoring
 
@@ -49,10 +54,15 @@ services:
     restart: unless-stopped
     container_name: alertmgr
     ports:
-      - "9093:9093"
+      # Loopback only, deliberately (S0.5). Unauthenticated: anyone who can
+      # reach this can silence every alert. See docs/Decisions.md D-010.
+      - 127.0.0.1:9093:9093
     volumes:
       - "./alertmanager:/config"
       - alertmanager-data:/data
+      # Untracked, .gitignore'd (S0.3). The SMTP password must never live in
+      # alertmanager.yml, which is committed to a public repo.
+      - ./secrets:/run/secrets:ro
     command: --config.file=/config/alertmanager.yml --log.level=debug
     networks:
       - monitoring
@@ -64,8 +74,10 @@ services:
     container_name: Blackbox
     volumes:
       - ./blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml
-    ports:
-      - '9115:9115'
+    # No published port, deliberately, and this is the most important line in
+    # the file (S0.4). Published, /probe?target=... is an unauthenticated SSRF
+    # relay: it fetches any URL a caller names, from inside the network.
+    # Prometheus reaches it as blackbox:9115 over the `monitoring` network.
     networks:
       - monitoring
       
@@ -73,17 +85,19 @@ services:
     image: grafana/grafana:latest
     container_name: grafana
     user: '0'
+    # Credentials come from .env.local, which is untracked (S0.2, S0.3).
+    # Copy .env.local.example to .env.local and set a real password.
+    env_file:
+      - .env.local
     environment:
       - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/node_exporter.json
+      - GF_USERS_ALLOW_SIGN_UP=false
     ports:
-      - 3001:3000
+      # Loopback only, deliberately (S0.2). See docs/Decisions.md D-010.
+      - 127.0.0.1:3001:3000
     restart: unless-stopped
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
       - grafana_data:/var/lib/grafana
-    #  environment:
-    #   - GF_SECURITY_ADMIN_USER=${ADMIN_USER}
-    #   - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD}
-    #   - GF_USERS_ALLOW_SIGN_UP=false
     networks:
       - monitoring

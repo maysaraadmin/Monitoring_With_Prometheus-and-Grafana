@@ -10,7 +10,9 @@ receivers:
     email_configs:
       - smarthost: 'smtp.gmail.com:587'
         auth_username: '<your email id here>'
-        auth_password: "<your app password here>"
+        # Never put the password here: this file is committed to a public repo
+        # (S0.3). The file below is mounted from ./secrets, which is gitignored.
+        auth_password_file: /run/secrets/smtp_password
         from: '<your email id here>'
         to: "<receiver email id here>"
         headers:

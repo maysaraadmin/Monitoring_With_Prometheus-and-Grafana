@@ -1,0 +1,6 @@
+# Credentials. Never commit these: this repo is public.
+# Adding a path here does NOT untrack a file that is already tracked --
+# `git rm --cached <file>` is also required. See docs/Test_scenarios.md T1.S3.
+.env
+.env.local
+secrets/

@@ -37,7 +37,7 @@ See D-001.
 | 0.3 | Grafana provisioning (existing) | ✅ | Sprint 0 |
 | 0.4 | Alert rules and routing (existing) | ⚠️ | Sprint 0 |
 | 0.5 | Blackbox website probing (existing) | ✅ | Sprint 0 |
-| 1 | Secure the stack | ⬜ | |
+| 1 | Secure the stack | ⚠️ | Sprint 1 |
 | 2 | Correct the alert rules and deliver notifications | ⬜ | |
 | 3 | CI config validation | ⬜ | |
 | 4 | Real targets, pinned images, retention and restore | ⬜ | |
@@ -154,11 +154,11 @@ is still `up`. No credential is in a tracked file.
 **Needs from the user:** a Grafana admin password (they choose it; it goes in an untracked file).
 
 ### F1.1 Stop publishing the ports that nothing needs
-- [ ] Remove the `ports:` block from `node-exporter` — only Prometheus scrapes it, over the `monitoring` network
-- [ ] Remove the `ports:` block from `blackbox` — same, and it closes the SSRF relay (S0.4)
-- [ ] Bind Prometheus to `127.0.0.1:9090:9090` and Alertmanager to `127.0.0.1:9093:9093`
-- [ ] Bind Grafana to `127.0.0.1:3001:3000`
-- [ ] Add a comment above each `ports:` entry recording that loopback-only is a deliberate control, so the next edit does not silently undo it (S5.1)
+- [x] Remove the `ports:` block from `node-exporter` — only Prometheus scrapes it, over the `monitoring` network
+- [x] Remove the `ports:` block from `blackbox` — same, and it closes the SSRF relay (S0.4)
+- [x] Bind Prometheus to `127.0.0.1:9090:9090` and Alertmanager to `127.0.0.1:9093:9093`
+- [x] Bind Grafana to `127.0.0.1:3001:3000`
+- [x] Add a comment above each `ports:` entry recording that loopback-only is a deliberate control, so the next edit does not silently undo it (S5.1)
 
 **Acceptance criteria**
 - AC1.1.1: Given the stack is up, when `docker compose ps` is read, then no published port is bound to `0.0.0.0` or `::`.
@@ -167,18 +167,18 @@ is still `up`. No credential is in a tracked file.
 - AC1.1.4: Given the stack is up, when `curl http://localhost:3001/api/health` is run on this host, then it returns 200.
 
 ### F1.2 Drop the Prometheus lifecycle API
-- [ ] Remove `--web.enable-lifecycle` from the Prometheus command
-- [ ] Note in `docs/Decisions.md` how to reload config without it (`docker compose restart prometheus`)
+- [x] Remove `--web.enable-lifecycle` from the Prometheus command
+- [x] Note in `docs/Decisions.md` how to reload config without it (`docker compose restart prometheus`)
 
 **Acceptance criteria**
-- AC1.2.1: Given the flag is removed, when `POST http://localhost:9090/-/reload` is sent, then it returns 405 or 404 rather than reloading.
+- AC1.2.1: Given the flag is removed, when `POST http://localhost:9090/-/reload` is sent, then it is refused without reloading. **Corrected 2026-11-16:** the plan predicted 405 or 404; Prometheus actually returns **403** with "lifecycle API is not enabled". The control works; the expected value in the plan was wrong.
 - AC1.2.2: Given the flag is removed, when `docker compose restart prometheus` is run after a config change, then the new config is in effect and `promtool check config` still passes.
 
 ### F1.3 Real Grafana credentials, from an untracked file
-- [ ] Create `.env.local` (untracked) holding `GF_SECURITY_ADMIN_PASSWORD` and `GF_SECURITY_ADMIN_USER`
-- [ ] Reference it from the `grafana` service with `env_file:`, and set `GF_USERS_ALLOW_SIGN_UP=false`
-- [ ] Commit `.env.local.example` with placeholder values and no real secret
-- [ ] Because Grafana only reads the admin password when it initialises its database, change the existing password through the API as well, or recreate the volume (S1.2)
+- [x] Create `.env.local` (untracked) holding `GF_SECURITY_ADMIN_PASSWORD` and `GF_SECURITY_ADMIN_USER`
+- [x] Reference it from the `grafana` service with `env_file:`, and set `GF_USERS_ALLOW_SIGN_UP=false`
+- [x] Commit `.env.local.example` with placeholder values and no real secret
+- [x] Because Grafana only reads the admin password when it initialises its database, change the existing password through the API as well, or recreate the volume (S1.2)
 
 **Acceptance criteria**
 - AC1.3.1: Given the new password is configured, when a login with `admin`/`admin` is attempted, then it is rejected.
@@ -187,17 +187,26 @@ is still `up`. No credential is in a tracked file.
 - AC1.3.4: Given `.env.local` exists, when `git status --short` is run, then `.env.local` is not listed as untracked or modified, because `.gitignore` covers it.
 
 ### F1.4 Get the placeholder credential files out of the repo
-- [ ] Add `.env`, `.env.local` and `config` to `.gitignore`
-- [ ] `git rm --cached .env config` — ignoring a tracked file does not untrack it (S1.3)
-- [ ] Switch `alertmanager.yml` to `auth_password_file: /run/secrets/smtp_password` and mount that file from an untracked path, so Sprint 2 has nowhere to commit a real password
-- [ ] Delete the `config` file outright if nothing uses it, rather than leaving a decoy
+- [x] Add `.env`, `.env.local` and `config` to `.gitignore`
+- [x] `git rm --cached .env config` — ignoring a tracked file does not untrack it (S1.3)
+- [x] Switch `alertmanager.yml` to `auth_password_file: /run/secrets/smtp_password` and mount that file from an untracked path, so Sprint 2 has nowhere to commit a real password
+- [x] Delete the `config` file outright if nothing uses it, rather than leaving a decoy
 
 **Acceptance criteria**
 - AC1.4.1: Given the change, when `git ls-files` is run, then neither `.env` nor `config` appears.
 - AC1.4.2: Given `alertmanager.yml` uses `auth_password_file`, when `amtool check-config` runs, then it reports SUCCESS.
-- AC1.4.3: Given the secret file is absent, when Alertmanager starts, then it fails loudly with a readable error rather than starting with no password.
+- AC1.4.3: Given the secret file is absent, when Alertmanager starts, then it fails loudly with a readable error rather than starting with no password. ❌ **Failed 2026-11-16 — not achievable this way.** Alertmanager starts normally and `amtool check-config` reports SUCCESS with the file missing: it reads `auth_password_file` at notify time, not at config load. A missing secret is therefore silent until an alert fires. See I-011; the real fix is the startup placeholder check planned as F5.3/S5.2.
 
 ### Progress notes
+- 2026-11-16 — Executed on branch `sprint-1-secure-the-stack`. 12 of 13 ACs pass.
+  AC1.4.3 failed and is not achievable as written (see above and I-011).
+  AC1.1.2 is unverified: it needs a second device on the LAN, which was not available;
+  T1.S1 was run instead as the strongest available substitute, confirming from the host's
+  own `netstat` that only three loopback listeners remain.
+  AC1.2.1's expected status code was wrong in the plan and has been corrected in place.
+  S1.2 was confirmed rather than merely anticipated: `admin`/`admin` still worked after
+  `GF_SECURITY_ADMIN_PASSWORD` was set, because Grafana had already initialised its
+  database. The password had to be changed through the API, as F1.3's last task said.
 
 ## Sprint 2: Correct the alert rules and deliver notifications
 **Definition of done:** on a healthy stack, no alert fires except the clearly-named deliberate
