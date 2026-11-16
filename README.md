@@ -33,10 +33,14 @@ Bookmark one URL per site. It is a single templated dashboard, not a file per si
 site appears in the `Site` dropdown as soon as you add it to `sites.yml` — nothing per-site has
 to be created. The top of the page also lists every site at once in one table.
 
-Per site you get: status, uptime over the selected range, HTTP code, days until the TLS
-certificate expires, an availability timeline, total response time, and a breakdown of where
-that time went (DNS, connect, TLS, server processing, transfer) — which is the panel that tells
-you *why* a site got slow.
+Seven panels per site, answering the everyday questions: is it up, is it reliably up, how many
+probes failed, when does the certificate expire, what has availability looked like, how fast is
+it, and where does the time go (DNS, connect, TLS, server processing, transfer).
+
+A **Diagnostics** row sits collapsed at the bottom with twelve more panels — percentiles,
+failure modes, page size, a latency distribution, connection timings, and a table explaining how
+to read a failure. Collapsed rows render nothing until you open them, so they cost no attention
+until a site actually misbehaves.
 
 **Want a separate dashboard per site** instead of one with a dropdown? Generate them:
 

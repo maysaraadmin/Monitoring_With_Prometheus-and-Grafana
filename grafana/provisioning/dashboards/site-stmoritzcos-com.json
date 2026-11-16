@@ -38,10 +38,10 @@
         "uid": "${DS_PROM}"
       },
       "gridPos": {
-        "h": 4,
-        "w": 6,
         "x": 0,
-        "y": 0
+        "y": 0,
+        "w": 6,
+        "h": 4
       },
       "targets": [
         {
@@ -115,10 +115,10 @@
         "uid": "${DS_PROM}"
       },
       "gridPos": {
-        "h": 4,
-        "w": 6,
         "x": 6,
-        "y": 0
+        "y": 0,
+        "w": 6,
+        "h": 4
       },
       "targets": [
         {
@@ -175,139 +175,6 @@
     },
     {
       "type": "stat",
-      "title": "HTTP status",
-      "description": "probe_http_status_code. 0 means the request never completed -- DNS, connection or timeout, not a server reply.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROM}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 0
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "probe_http_status_code{instance=\"https://stmoritzcos.com\"}",
-          "instant": true,
-          "legendFormat": "code",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROM}"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "decimals": 0,
-          "noValue": "no data",
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "text": "no reply",
-                  "color": "red",
-                  "index": 0
-                }
-              }
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "text",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "none",
-        "graphMode": "none",
-        "textMode": "value",
-        "justifyMode": "center",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      }
-    },
-    {
-      "type": "stat",
-      "title": "TLS certificate expires in",
-      "description": "Days until the earliest certificate in the chain expires. A negative value means it already has. Only present for targets that actually serve TLS -- an http:// URL that redirects to HTTPS will show one. Blank means no probe has succeeded in the range, so the certificate could not be read -- it does not mean the site has no certificate.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROM}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 18,
-        "y": 0
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "(probe_ssl_earliest_cert_expiry{instance=\"https://stmoritzcos.com\"} - time()) / 86400",
-          "instant": true,
-          "legendFormat": "days",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROM}"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "d",
-          "decimals": 0,
-          "noValue": "unknown",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 14
-              },
-              {
-                "color": "green",
-                "value": 30
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "value",
-        "justifyMode": "center",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      }
-    },
-    {
-      "type": "stat",
       "title": "Failed probes, selected range",
       "description": "How many probes did not succeed in the selected range. This is the headline number: a site can look UP right now and still have failed repeatedly today.",
       "datasource": {
@@ -315,10 +182,10 @@
         "uid": "${DS_PROM}"
       },
       "gridPos": {
-        "h": 4,
+        "x": 12,
+        "y": 0,
         "w": 6,
-        "x": 0,
-        "y": 4
+        "h": 4
       },
       "targets": [
         {
@@ -372,439 +239,52 @@
     },
     {
       "type": "stat",
-      "title": "Median response",
-      "description": "quantile_over_time(0.5). Half of all probes were faster than this. Compare with p95 below: if they are far apart the site is inconsistent, which users feel more than a slow average.",
+      "title": "TLS certificate expires in",
+      "description": "Days until the earliest certificate in the chain expires. A negative value means it already has. Only present for targets that actually serve TLS -- an http:// URL that redirects to HTTPS will show one. Blank means no probe has succeeded in the range, so the certificate could not be read -- it does not mean the site has no certificate.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROM}"
       },
       "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 6,
-        "y": 4
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "quantile_over_time(0.5, probe_duration_seconds{instance=\"https://stmoritzcos.com\"}[$__range])",
-          "legendFormat": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROM}"
-          },
-          "instant": true
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "noValue": "no data",
-          "decimals": 2,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 1
-              },
-              {
-                "color": "red",
-                "value": 3
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "value",
-        "justifyMode": "center",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      }
-    },
-    {
-      "type": "stat",
-      "title": "95th percentile",
-      "description": "19 out of 20 probes were faster than this. This is closer to the worst experience a real visitor gets than the median is.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROM}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 4
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "quantile_over_time(0.95, probe_duration_seconds{instance=\"https://stmoritzcos.com\"}[$__range])",
-          "legendFormat": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROM}"
-          },
-          "instant": true
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "noValue": "no data",
-          "decimals": 2,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 2
-              },
-              {
-                "color": "red",
-                "value": 5
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "value",
-        "justifyMode": "center",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Status flips",
-      "description": "How many times the site changed between UP and DOWN in the range. A high number means flapping -- intermittently unreachable -- which is harder to diagnose and often worse for users than being cleanly down.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROM}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
         "x": 18,
-        "y": 4
+        "y": 0,
+        "w": 6,
+        "h": 4
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "changes(probe_success{instance=\"https://stmoritzcos.com\"}[$__range])",
-          "legendFormat": "A",
+          "expr": "(probe_ssl_earliest_cert_expiry{instance=\"https://stmoritzcos.com\"} - time()) / 86400",
+          "instant": true,
+          "legendFormat": "days",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROM}"
-          },
-          "instant": true
+          }
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "noValue": "0",
+          "unit": "d",
           "decimals": 0,
+          "noValue": "unknown",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "red",
                 "value": null
               },
               {
                 "color": "yellow",
-                "value": 2
+                "value": 14
               },
-              {
-                "color": "red",
-                "value": 6
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "value",
-        "justifyMode": "center",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Connection-level failures",
-      "description": "Probes that got NO HTTP reply -- the connection was refused, dropped or timed out before the server said anything. A run of these usually means a firewall is blocking this machine (rate limiting, fail2ban, CSF) or the host is unreachable. It does NOT mean the site is broken for everyone: check from another network before assuming an outage.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROM}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 0,
-        "y": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "count_over_time((probe_http_status_code{instance=\"https://stmoritzcos.com\"} == 0)[$__range:30s])",
-          "instant": true,
-          "legendFormat": "v",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROM}"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "noValue": "0",
-          "decimals": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
               {
                 "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 1
-              },
-              {
-                "color": "red",
-                "value": 5
+                "value": 30
               }
             ]
           }
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "value",
-        "justifyMode": "center",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Replied, then failed",
-      "description": "Probes where the server DID start replying but the probe still failed. Two causes, both the server's: a status outside 200-399 (a 500, 403 or WAF rejection), or -- more often -- a 200 that could not finish transferring before the scrape timeout cut it off. The second case means the page starts arriving and then crawls, which page weight alone rarely explains. If this is high while connection-level failures are 0, the host is reachable but struggling.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROM}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 6,
-        "y": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "count_over_time((probe_success{instance=\"https://stmoritzcos.com\"} == 0 and probe_http_status_code{instance=\"https://stmoritzcos.com\"} > 0)[$__range:30s])",
-          "instant": true,
-          "legendFormat": "v",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROM}"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "noValue": "0",
-          "decimals": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 1
-              },
-              {
-                "color": "red",
-                "value": 5
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "value",
-        "justifyMode": "center",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Slowest response",
-      "description": "The worst single probe in the range. If this sits at a flat number equal to the scrape timeout (20s for this job), those probes did not finish -- they were cut off, so the real figure is 'at least this'. Compare with the median: a large gap means the site is inconsistent rather than uniformly slow.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROM}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "max_over_time(probe_duration_seconds{instance=\"https://stmoritzcos.com\"}[$__range])",
-          "instant": true,
-          "legendFormat": "v",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROM}"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "noValue": "no data",
-          "decimals": 2,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 3
-              },
-              {
-                "color": "red",
-                "value": 10
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "value",
-        "justifyMode": "center",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Fastest response",
-      "description": "The best single probe in the range. This is what the site is capable of when nothing is in the way, so it is the realistic target for the median. A low number here with a high median means the slowness is intermittent, not structural.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROM}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 18,
-        "y": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "min_over_time(probe_duration_seconds{instance=\"https://stmoritzcos.com\"}[$__range])",
-          "instant": true,
-          "legendFormat": "v",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROM}"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "noValue": "no data",
-          "decimals": 2,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 1
-              },
-              {
-                "color": "red",
-                "value": 3
-              }
-            ]
-          },
-          "unit": "s"
         },
         "overrides": []
       },
@@ -831,10 +311,10 @@
         "uid": "${DS_PROM}"
       },
       "gridPos": {
-        "h": 5,
-        "w": 24,
         "x": 0,
-        "y": 12
+        "y": 4,
+        "w": 24,
+        "h": 5
       },
       "targets": [
         {
@@ -914,10 +394,10 @@
         "uid": "${DS_PROM}"
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 0,
-        "y": 17
+        "y": 9,
+        "w": 12,
+        "h": 7
       },
       "targets": [
         {
@@ -967,10 +447,10 @@
         "uid": "${DS_PROM}"
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 12,
-        "y": 17
+        "y": 9,
+        "w": 12,
+        "h": 7
       },
       "targets": [
         {
@@ -1017,207 +497,740 @@
       }
     },
     {
-      "type": "timeseries",
-      "title": "Page size",
-      "description": "Uncompressed body size of the probed URL. Watch it for regressions: when transfer dominates the response-time breakdown, this is the cause, and a sudden step up usually means an unoptimised asset shipped.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROM}"
-      },
+      "type": "row",
+      "title": "Diagnostics (open when something is wrong)",
+      "collapsed": true,
       "gridPos": {
-        "h": 7,
-        "w": 12,
+        "h": 1,
+        "w": 24,
         "x": 0,
-        "y": 25
+        "y": 16
       },
-      "targets": [
+      "panels": [
         {
-          "refId": "A",
-          "expr": "probe_http_uncompressed_body_length{instance=\"https://stmoritzcos.com\"}",
-          "legendFormat": "body",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROM}"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes",
-          "min": 0,
-          "noValue": "no data",
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 8,
-            "showPoints": "never",
-            "spanNulls": false,
-            "axisSoftMin": 0
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "showLegend": false,
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      }
-    },
-    {
-      "type": "heatmap",
-      "title": "Response time distribution",
-      "description": "Each column is a time bucket; brightness is how many probes landed in each latency band. A single bright band means consistent performance. Two separated bands mean the site has two modes -- fast most of the time and very slow the rest -- which an average would hide entirely.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROM}"
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 25
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "probe_duration_seconds{instance=\"https://stmoritzcos.com\"}",
-          "legendFormat": "latency",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROM}"
-          }
-        }
-      ],
-      "options": {
-        "calculate": true,
-        "calculation": {
-          "yBuckets": {
-            "mode": "size",
-            "value": "0.5"
-          }
-        },
-        "color": {
-          "mode": "scheme",
-          "scheme": "Blues",
-          "steps": 32,
-          "reverse": false,
-          "exponent": 0.5,
-          "fill": "dark-orange"
-        },
-        "cellGap": 2,
-        "yAxis": {
-          "unit": "s",
-          "decimals": 1
-        },
-        "legend": {
-          "show": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "showColorScale": true,
-          "yHistogram": false
-        },
-        "exemplars": {
-          "color": "rgba(255,0,255,0.7)"
-        },
-        "filterValues": {
-          "le": 1e-09
-        },
-        "rowsFrame": {
-          "layout": "auto"
-        },
-        "showValue": "never"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            }
-          }
-        },
-        "overrides": []
-      }
-    },
-    {
-      "type": "timeseries",
-      "title": "Getting connected (TCP and TLS)",
-      "description": "Time to open the TCP connection and complete the TLS handshake, before the site does any work. blackbox records these as 0 when it never got through at all -- so a drop to zero here, rather than a spike, is the signature of a blocked or dropped connection. Steady non-zero values that are simply large mean a distant or loaded server, which is a different problem.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROM}"
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 32
-      },
-      "targets": [
-        {
-          "refId": "A",
+          "type": "stat",
+          "title": "HTTP status",
+          "description": "probe_http_status_code. 0 means the request never completed -- DNS, connection or timeout, not a server reply.",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROM}"
           },
-          "legendFormat": "{{phase}}",
-          "expr": "probe_http_duration_seconds{instance=\"https://stmoritzcos.com\", phase=~\"connect|tls|resolve\"}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "min": 0,
-          "noValue": "no data",
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 0,
-            "showPoints": "auto",
-            "pointSize": 5,
-            "spanNulls": false,
-            "axisSoftMin": 0
+          "gridPos": {
+            "x": 0,
+            "y": 27,
+            "w": 6,
+            "h": 4
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "probe_http_status_code{instance=\"https://stmoritzcos.com\"}",
+              "instant": true,
+              "legendFormat": "code",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROM}"
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "noValue": "no data",
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "no reply",
+                      "color": "red",
+                      "index": 0
+                    }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "none",
+            "graphMode": "none",
+            "textMode": "value",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
           }
         },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "showLegend": true,
-          "displayMode": "list",
-          "placement": "bottom"
+        {
+          "type": "stat",
+          "title": "Median response",
+          "description": "quantile_over_time(0.5). Half of all probes were faster than this. Compare with p95 below: if they are far apart the site is inconsistent, which users feel more than a slow average.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          },
+          "gridPos": {
+            "x": 6,
+            "y": 27,
+            "w": 6,
+            "h": 4
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "quantile_over_time(0.5, probe_duration_seconds{instance=\"https://stmoritzcos.com\"}[$__range])",
+              "legendFormat": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROM}"
+              },
+              "instant": true
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "no data",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 3
+                  }
+                ]
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "value",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          }
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
+        {
+          "type": "stat",
+          "title": "95th percentile",
+          "description": "19 out of 20 probes were faster than this. This is closer to the worst experience a real visitor gets than the median is.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 27,
+            "w": 6,
+            "h": 4
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "quantile_over_time(0.95, probe_duration_seconds{instance=\"https://stmoritzcos.com\"}[$__range])",
+              "legendFormat": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROM}"
+              },
+              "instant": true
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "no data",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 2
+                  },
+                  {
+                    "color": "red",
+                    "value": 5
+                  }
+                ]
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "value",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          }
+        },
+        {
+          "type": "stat",
+          "title": "Status flips",
+          "description": "How many times the site changed between UP and DOWN in the range. A high number means flapping -- intermittently unreachable -- which is harder to diagnose and often worse for users than being cleanly down.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          },
+          "gridPos": {
+            "x": 18,
+            "y": 27,
+            "w": 6,
+            "h": 4
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "changes(probe_success{instance=\"https://stmoritzcos.com\"}[$__range])",
+              "legendFormat": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROM}"
+              },
+              "instant": true
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "0",
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 2
+                  },
+                  {
+                    "color": "red",
+                    "value": 6
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "value",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          }
+        },
+        {
+          "type": "stat",
+          "title": "Connection-level failures",
+          "description": "Probes that got NO HTTP reply -- the connection was refused, dropped or timed out before the server said anything. A run of these usually means a firewall is blocking this machine (rate limiting, fail2ban, CSF) or the host is unreachable. It does NOT mean the site is broken for everyone: check from another network before assuming an outage.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 31,
+            "w": 6,
+            "h": 4
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "count_over_time((probe_http_status_code{instance=\"https://stmoritzcos.com\"} == 0)[$__range:30s])",
+              "instant": true,
+              "legendFormat": "v",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROM}"
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "0",
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 5
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "value",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          }
+        },
+        {
+          "type": "stat",
+          "title": "Replied, then failed",
+          "description": "Probes where the server DID start replying but the probe still failed. Two causes, both the server's: a status outside 200-399 (a 500, 403 or WAF rejection), or -- more often -- a 200 that could not finish transferring before the scrape timeout cut it off. The second case means the page starts arriving and then crawls, which page weight alone rarely explains. If this is high while connection-level failures are 0, the host is reachable but struggling.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          },
+          "gridPos": {
+            "x": 6,
+            "y": 31,
+            "w": 6,
+            "h": 4
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "count_over_time((probe_success{instance=\"https://stmoritzcos.com\"} == 0 and probe_http_status_code{instance=\"https://stmoritzcos.com\"} > 0)[$__range:30s])",
+              "instant": true,
+              "legendFormat": "v",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROM}"
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "0",
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 5
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "value",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          }
+        },
+        {
+          "type": "stat",
+          "title": "Slowest response",
+          "description": "The worst single probe in the range. If this sits at a flat number equal to the scrape timeout (20s for this job), those probes did not finish -- they were cut off, so the real figure is 'at least this'. Compare with the median: a large gap means the site is inconsistent rather than uniformly slow.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 31,
+            "w": 6,
+            "h": 4
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "max_over_time(probe_duration_seconds{instance=\"https://stmoritzcos.com\"}[$__range])",
+              "instant": true,
+              "legendFormat": "v",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROM}"
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "no data",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 3
+                  },
+                  {
+                    "color": "red",
+                    "value": 10
+                  }
+                ]
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "value",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          }
+        },
+        {
+          "type": "stat",
+          "title": "Fastest response",
+          "description": "The best single probe in the range. This is what the site is capable of when nothing is in the way, so it is the realistic target for the median. A low number here with a high median means the slowness is intermittent, not structural.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          },
+          "gridPos": {
+            "x": 18,
+            "y": 31,
+            "w": 6,
+            "h": 4
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "min_over_time(probe_duration_seconds{instance=\"https://stmoritzcos.com\"}[$__range])",
+              "instant": true,
+              "legendFormat": "v",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROM}"
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "no data",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 3
+                  }
+                ]
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "value",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Page size",
+          "description": "Uncompressed body size of the probed URL. Watch it for regressions: when transfer dominates the response-time breakdown, this is the cause, and a sudden step up usually means an unoptimised asset shipped.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 35,
+            "w": 12,
+            "h": 7
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "probe_http_uncompressed_body_length{instance=\"https://stmoritzcos.com\"}",
+              "legendFormat": "body",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROM}"
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "min": 0,
+              "noValue": "no data",
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 8,
+                "showPoints": "never",
+                "spanNulls": false,
+                "axisSoftMin": 0
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "showLegend": false,
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          }
+        },
+        {
+          "type": "heatmap",
+          "title": "Response time distribution",
+          "description": "Each column is a time bucket; brightness is how many probes landed in each latency band. A single bright band means consistent performance. Two separated bands mean the site has two modes -- fast most of the time and very slow the rest -- which an average would hide entirely.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 35,
+            "w": 12,
+            "h": 7
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "probe_duration_seconds{instance=\"https://stmoritzcos.com\"}",
+              "legendFormat": "latency",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROM}"
+              }
+            }
+          ],
+          "options": {
+            "calculate": true,
+            "calculation": {
+              "yBuckets": {
+                "mode": "size",
+                "value": "0.5"
+              }
+            },
+            "color": {
+              "mode": "scheme",
+              "scheme": "Blues",
+              "steps": 32,
+              "reverse": false,
+              "exponent": 0.5,
+              "fill": "dark-orange"
+            },
+            "cellGap": 2,
+            "yAxis": {
+              "unit": "s",
+              "decimals": 1
+            },
+            "legend": {
+              "show": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "showColorScale": true,
+              "yHistogram": false
+            },
+            "exemplars": {
+              "color": "rgba(255,0,255,0.7)"
+            },
+            "filterValues": {
+              "le": 1e-09
+            },
+            "rowsFrame": {
+              "layout": "auto"
+            },
+            "showValue": "never"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                }
+              }
+            },
+            "overrides": []
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Getting connected (TCP and TLS)",
+          "description": "Time to open the TCP connection and complete the TLS handshake, before the site does any work. blackbox records these as 0 when it never got through at all -- so a drop to zero here, rather than a spike, is the signature of a blocked or dropped connection. Steady non-zero values that are simply large mean a distant or loaded server, which is a different problem.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 42,
+            "w": 12,
+            "h": 7
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROM}"
+              },
+              "legendFormat": "{{phase}}",
+              "expr": "probe_http_duration_seconds{instance=\"https://stmoritzcos.com\", phase=~\"connect|tls|resolve\"}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "min": 0,
+              "noValue": "no data",
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 0,
+                "showPoints": "auto",
+                "pointSize": 5,
+                "spanNulls": false,
+                "axisSoftMin": 0
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "showLegend": true,
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        },
+        {
+          "type": "text",
+          "title": "How to read a failure here",
+          "gridPos": {
+            "x": 12,
+            "y": 42,
+            "w": 12,
+            "h": 7
+          },
+          "options": {
+            "mode": "markdown",
+            "code": {
+              "language": "plaintext",
+              "showLineNumbers": false
+            },
+            "content": "**Work down this list before concluding the site is down.**\n\n| What you see | What it usually means |\n|---|---|\n| Connection-level failures high, HTTP-error failures 0 | Nothing reached the server. A firewall is dropping this machine (rate limit, fail2ban, CSF), or the host is unreachable. **The site may be perfectly fine for everyone else.** |\n| HTTP-error failures high | The server replied and refused. Its own problem: 500, 403, a WAF rule. Check the site's error log. |\n| 'Getting connected' drops to 0 | The connection never completed. Same as the first row. |\n| Slowest response pinned at exactly 20s | Probes are being cut off by the scrape timeout, so the true time is *at least* that. Not a measurement, a floor. |\n| Median low, 95th percentile high | Intermittent, not structurally slow. Look for cron jobs, backups, a noisy neighbour on shared hosting. |\n| Transfer dominates 'Where the time goes' | Page weight, not server speed. Check compression and image sizes. |\n\n**This stack only watches while this machine is awake**, so blank stretches in the timeline are gaps in observation, not proven uptime. See `docs/Decisions.md` D-014.\n\n**Before escalating:** load the site from a phone on mobile data. If it works there and not here, the problem is between this machine and the server."
+          }
         }
-      }
-    },
-    {
-      "type": "text",
-      "title": "How to read a failure here",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 32
-      },
-      "options": {
-        "mode": "markdown",
-        "code": {
-          "language": "plaintext",
-          "showLineNumbers": false
-        },
-        "content": "**Work down this list before concluding the site is down.**\n\n| What you see | What it usually means |\n|---|---|\n| Connection-level failures high, HTTP-error failures 0 | Nothing reached the server. A firewall is dropping this machine (rate limit, fail2ban, CSF), or the host is unreachable. **The site may be perfectly fine for everyone else.** |\n| HTTP-error failures high | The server replied and refused. Its own problem: 500, 403, a WAF rule. Check the site's error log. |\n| 'Getting connected' drops to 0 | The connection never completed. Same as the first row. |\n| Slowest response pinned at exactly 20s | Probes are being cut off by the scrape timeout, so the true time is *at least* that. Not a measurement, a floor. |\n| Median low, 95th percentile high | Intermittent, not structurally slow. Look for cron jobs, backups, a noisy neighbour on shared hosting. |\n| Transfer dominates 'Where the time goes' | Page weight, not server speed. Check compression and image sizes. |\n\n**This stack only watches while this machine is awake**, so blank stretches in the timeline are gaps in observation, not proven uptime. See `docs/Decisions.md` D-014.\n\n**Before escalating:** load the site from a phone on mobile data. If it works there and not here, the problem is between this machine and the server."
-      }
+      ]
     }
   ]
 }

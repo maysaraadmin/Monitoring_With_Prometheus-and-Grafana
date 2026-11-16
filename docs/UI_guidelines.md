@@ -64,3 +64,20 @@ A panel is not finished until all four read correctly:
 - The blackbox dashboard shown in the README's screenshots is still not the one in this repo;
   `websites.json` above was written from scratch for this project rather than imported, so it
   will not look like that screenshot.
+
+## Rule: the default view holds only what is read every day
+Added 2026-11-16 after the site dashboards reached 19 visible panels and the user asked for them
+to be simplified. The panels were all individually justified; the problem was that everything
+earned a place in the *default* view.
+
+- A dashboard's first screen answers the everyday questions only. For a website that is: is it
+  up, is it reliably up, how many probes failed, when does the certificate expire, what has
+  availability looked like, how fast is it, and where does the time go. Seven panels.
+- Anything needed only when something is wrong goes in a **collapsed row**. Grafana renders
+  nothing inside a collapsed row until it is opened, so it costs no load time and no attention,
+  and nothing has to be deleted to get a clean view.
+- Name the row for when to open it, not for what is in it: "Diagnostics (open when something is
+  wrong)" tells the reader whether they need it. "Advanced metrics" does not.
+- Prefer collapsing over deleting. The twelve diagnostic panels were what actually identified a
+  33% probe failure rate and told connection drops apart from mid-transfer timeouts. Deleting
+  them to tidy the view would have thrown away the only part that explained a real problem.
