@@ -12,6 +12,6 @@ receivers:
         auth_username: '<your email id here>'
         auth_password: "<your app password here>"
         from: '<your email id here>'
-        to: '<receiver's email id here>'
+        to: "<receiver email id here>"
         headers:
           subject: 'Prometheus Mail Alerts'
