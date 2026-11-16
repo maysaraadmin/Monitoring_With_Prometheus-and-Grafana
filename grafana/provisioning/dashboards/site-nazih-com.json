@@ -307,6 +307,264 @@
       }
     },
     {
+      "type": "stat",
+      "title": "Failed probes, selected range",
+      "description": "How many probes did not succeed in the selected range. This is the headline number: a site can look UP right now and still have failed repeatedly today.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROM}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count_over_time((probe_success{instance=\"https://nazih.com\"} == 0)[$__range:30s])",
+          "legendFormat": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          },
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Median response",
+      "description": "quantile_over_time(0.5). Half of all probes were faster than this. Compare with p95 below: if they are far apart the site is inconsistent, which users feel more than a slow average.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROM}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "quantile_over_time(0.5, probe_duration_seconds{instance=\"https://nazih.com\"}[$__range])",
+          "legendFormat": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          },
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "95th percentile",
+      "description": "19 out of 20 probes were faster than this. This is closer to the worst experience a real visitor gets than the median is.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROM}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "quantile_over_time(0.95, probe_duration_seconds{instance=\"https://nazih.com\"}[$__range])",
+          "legendFormat": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          },
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 2
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Status flips",
+      "description": "How many times the site changed between UP and DOWN in the range. A high number means flapping -- intermittently unreachable -- which is harder to diagnose and often worse for users than being cleanly down.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROM}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "changes(probe_success{instance=\"https://nazih.com\"}[$__range])",
+          "legendFormat": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          },
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 2
+              },
+              {
+                "color": "red",
+                "value": 6
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
       "type": "state-timeline",
       "title": "Availability over time",
       "description": "One band per probe result. Blank stretches are periods with no data at all -- this machine was off, not the site. That distinction is the whole point of showing it this way rather than as a line at zero.",
@@ -318,7 +576,7 @@
         "h": 5,
         "w": 24,
         "x": 0,
-        "y": 4
+        "y": 8
       },
       "targets": [
         {
@@ -401,7 +659,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 9
+        "y": 13
       },
       "targets": [
         {
@@ -454,7 +712,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 9
+        "y": 13
       },
       "targets": [
         {
@@ -498,6 +756,137 @@
           "mode": "multi",
           "sort": "desc"
         }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Page size",
+      "description": "Uncompressed body size of the probed URL. Watch it for regressions: when transfer dominates the response-time breakdown, this is the cause, and a sudden step up usually means an unoptimised asset shipped.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROM}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 21
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "probe_http_uncompressed_body_length{instance=\"https://nazih.com\"}",
+          "legendFormat": "body",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "noValue": "no data",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "type": "heatmap",
+      "title": "Response time distribution",
+      "description": "Each column is a time bucket; brightness is how many probes landed in each latency band. A single bright band means consistent performance. Two separated bands mean the site has two modes -- fast most of the time and very slow the rest -- which an average would hide entirely.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROM}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 21
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "probe_duration_seconds{instance=\"https://nazih.com\"}",
+          "legendFormat": "latency",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          }
+        }
+      ],
+      "options": {
+        "calculate": true,
+        "calculation": {
+          "yBuckets": {
+            "mode": "size",
+            "value": "0.5"
+          }
+        },
+        "color": {
+          "mode": "scheme",
+          "scheme": "Blues",
+          "steps": 32,
+          "reverse": false,
+          "exponent": 0.5,
+          "fill": "dark-orange"
+        },
+        "cellGap": 2,
+        "yAxis": {
+          "unit": "s",
+          "decimals": 1
+        },
+        "legend": {
+          "show": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "showColorScale": true,
+          "yHistogram": false
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1e-09
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "showValue": "never"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          }
+        },
+        "overrides": []
       }
     }
   ]
