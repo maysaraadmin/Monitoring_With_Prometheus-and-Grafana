@@ -223,3 +223,38 @@ name and the description, and silently changing what an alert means is worse tha
 arithmetic. Deleting the rule — it does express a real intent, and the original author wrote it
 on purpose.
 **Status:** Active
+
+## D-016 Only the user's own sites are probed (2026-11-16)
+**Decision:** The blackbox job probes exactly the sites listed in
+`prometheus/targets/sites.yml` and nothing else. The deliberately-failing demo target
+`http://example.com:8080` has been removed on the user's instruction.
+**Supersedes:** the website half of **D-004**. D-004 kept two kinds of deliberate failure as
+teaching aids, a dead scrape target and a dead probe target. The probe target is gone; the
+`dummy_node` scrape job is untouched and still fails on purpose, so D-004 remains active for
+that half.
+**Why:** the stack now monitors real sites. A permanently-failing demo target is exactly the
+alert-fatigue problem recorded as S2.3 — an alert that always fires teaches the operator to
+ignore the channel, which is worse than having no alert.
+**Consequence to respect:** there is no longer a self-demonstrating failure in the blackbox
+path. To check that probe alerting still works, point a target at something you know is down,
+or use `promtool test rules` fixtures (planned as F3.2) rather than leaving a broken target in
+production config.
+**Status:** Active
+
+## D-017 The site dropdown lists live sites, not historical ones (2026-11-16)
+**Decision:** The `site` variable in the Website Monitoring dashboard uses
+`query_result(probe_success)` with a regex to extract the instance, **not**
+`label_values(probe_success, instance)`.
+**Why:** `label_values` resolves over the dashboard's whole time range. With a 24-hour default
+range, a site removed from `sites.yml` kept appearing in the dropdown for a further 24 hours,
+which looked exactly like the removal not having worked. Observed directly: two sites were being
+scraped while the dropdown offered seven. `query_result` runs an instant query, so only series
+with a recent sample are listed and a removed site disappears within about five minutes.
+**Rejected alternatives:** Deleting the stale series with Prometheus's admin delete API — it
+needs `--web.enable-admin-api`, which Sprint 1 deliberately did not enable, and it would have
+fixed today's symptom without fixing the next removal. Shortening the dashboard's default time
+range — hides the problem and costs useful history.
+**Consequence to respect:** the dropdown now depends on recent data, so a site that is
+genuinely unreachable still appears (it has samples, with `probe_success` 0), but a site removed
+from config drops out. That is the intended distinction.
+**Status:** Active

@@ -48,13 +48,13 @@ scrape_configs:
     metrics_path: /probe
     params:
       module: [http_2xx]  # Look for a HTTP 200 response.
-    static_configs:
-      # Deliberately unreachable, to demonstrate the site-down alert (D-004).
-      - targets:
-        - http://example.com:8080
-    # Your own sites go in prometheus/targets/sites.yml, also gitignored so the
-    # list of domains you own is not published here (S7.7). This needs no
-    # software on the server and works through NAT today.
+    # The deliberately-failing demo target (http://example.com:8080) was removed
+    # on the user's instruction 2026-11-16, now that real sites are monitored.
+    # This supersedes the website half of D-004 -- see D-016.
+    #
+    # Sites are listed in prometheus/targets/sites.yml, gitignored so the domains
+    # you own are not published in this repo (S7.7). Needs nothing installed on
+    # the server and works through NAT.
     file_sd_configs:
       - files: ['/etc/prometheus/targets/sites.yml']
         refresh_interval: 1m

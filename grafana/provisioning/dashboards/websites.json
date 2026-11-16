@@ -24,12 +24,14 @@
         "label": "Site",
         "type": "query",
         "datasource": { "type": "prometheus", "uid": "${DS_PROM}" },
-        "query": { "query": "label_values(probe_success, instance)", "refId": "site-variable-query" },
+        "query": { "query": "query_result(probe_success)", "refId": "site-variable-query" },
+        "regex": "/instance=\"([^\"]*)\"/",
         "refresh": 2,
         "sort": 1,
         "includeAll": false,
         "multi": false,
-        "current": {}
+        "current": {},
+        "description": "Deliberately query_result(), not label_values(). label_values looks back over the whole dashboard time range, so a site removed from sites.yml kept appearing here for 24 hours. query_result runs an instant query, so only sites with a sample in the last few minutes are listed -- remove a site and it disappears from this list within about five minutes."
       }
     ]
   },
