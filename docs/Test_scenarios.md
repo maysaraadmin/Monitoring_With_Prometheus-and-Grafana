@@ -208,6 +208,34 @@ it is marked *(manual)* in `docs/Implementation.md` and carries a `T0.x` row her
 | T6.S3 | S6.3 | read the labels and image tags actually present on this host's 11 containers, then check which land in metric labels | nothing secret reaches the TSDB, the F4.4 backup, or an alert notification | ⬜ |
 | T6.S4 | AC6.3.3 | run a test container under a tight memory limit until the kernel OOM-kills it | the OOM alert fires and names that container | ⬜ |
 
+## Sprint 7 — Monitor remote VPSes
+| ID | Covers | Type | Scenario | Expected | Status |
+|---|---|---|---|---|---|
+| T7.1 | AC7.1.1 | integration | from the Prometheus container, connect to each VPS node-exporter over the private transport | all succeed | ⬜ |
+| T7.2 | AC7.1.2 | manual | probe each VPS's port 9100 from an address outside the private path | refused or filtered. **Must be run from off-network** — running it from this host proves nothing, since this host is inside the private path | ⬜ *(manual)* |
+| T7.3 | AC7.1.3, S7.2 | integration | force the workstation's public address to change, or reconnect the transport, and wait one scrape interval | scraping resumes with no config edit — this is the test an IP allowlist fails | ⬜ |
+| T7.4 | AC7.1.4 | integration | stop the transport and read `/api/v1/targets` | targets report `down` with a connection error, not healthy-with-stale-data | ⬜ |
+| T7.5 | AC7.2.1, S7.1 | integration | `ss -tlnp` on each VPS | 9100 bound to the private address only, never `0.0.0.0` or `::` | ⬜ |
+| T7.6 | AC7.2.2 | integration | query `node_uname_info` | one series per VPS, each with a distinct `instance` | ⬜ |
+| T7.7 | AC7.2.3 | integration | query `node_filesystem_size_bytes` for a VPS | no pseudo-filesystem mountpoints, matching this repo's own flags | ⬜ |
+| T7.8 | AC7.2.4 | integration | reboot a VPS and wait | node-exporter is running again with no manual step | ⬜ |
+| T7.9 | AC7.3.1 | integration | read `/api/v1/targets` | every VPS `up`, with its identifying labels present | ⬜ |
+| T7.10 | AC7.3.2 | integration | open the Node Exporter Full dashboard | the `node` dropdown lists every VPS and panels render for each | ⬜ |
+| T7.11 | AC7.3.3 | unit | `promtool test rules` fixture crossing a VPS disk threshold | the alert fires and names that instance | ⬜ |
+| T7.12 | AC7.3.4 | unit | fixture with two VPSes of very different disk sizes, both at the same percentage used | both behave identically, proving the threshold is a ratio not an absolute | ⬜ |
+| T7.13 | AC7.3.5, AC7.4.2, S7.4 | integration | interrupt one VPS's connectivity for 30 seconds; separately, take a VPS down while the workstation is off | `InstanceDown` does not fire on the blip; and after the workstation returns, nothing claims the server was up during the gap | ⬜ |
+| T7.14 | AC7.4.1 | manual | sleep the workstation for an hour, wake it, open the dashboard for that window | the gap reads as a gap, not as a flat line implying idle servers | ⬜ *(manual)* |
+| T7.15 | AC7.4.3 | static | read `docs/Decisions.md` | it states what this stack does and does not guarantee about being told a server is down | ⬜ |
+
+### Security tests
+| ID | Covers threat | Scenario | Expected | Status |
+|---|---|---|---|---|
+| T7.S1 | S7.1 | from an unrelated public host, curl `http://<vps-public-ip>:9100/metrics` for every VPS | refused on all of them. Run this **before** adding any scrape job, not after | ⬜ |
+| T7.S3 | S7.3 | `git ls-files` and a history grep for transport keys, SSH keys and mesh auth tokens | none tracked; all under the gitignored `secrets/` | ⬜ |
+| T7.S5 | S7.5 | list the labels the new targets produce, and check what reaches alert emails and the F4.4 backup | no production detail that was not meant to leave the host | ⬜ |
+| T7.S6 | S7.6 | point a scrape job at a test endpoint returning a very large high-cardinality response | `sample_limit`/`label_limit` reject the scrape and Prometheus memory stays flat, rather than the target being able to exhaust the collector | ⬜ |
+| T7.S7 | S7.7 | read the committed blackbox target list | it reveals only what the user accepted revealing in a public repo | ⬜ |
+
 ---
 
 Known exceptions, deliberate: S0.8 (the 30s Gmail retry loop) and S0.9 (`latest` image tags)

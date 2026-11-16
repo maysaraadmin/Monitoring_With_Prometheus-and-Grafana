@@ -43,6 +43,7 @@ See D-001.
 | 4 | Real targets, pinned images, retention and restore | ⬜ | |
 | 5 | Go-live and runbook | ⬜ | |
 | 6 | Container monitoring (cAdvisor) | ⬜ | |
+| 7 | Monitor remote VPSes | ⬜ | |
 
 Sprints 1–5 were approved by the user on 2026-11-16 and planned in detail below.
 Deployment context confirmed the same day: **one Windows workstation behind NAT** (D-010),
@@ -467,6 +468,69 @@ verifies which metrics actually arrive instead of assuming the documented set.
 
 ### Progress notes
 
+## Sprint 7: Monitor remote VPSes
+**Definition of done:** CPU, memory, disk and network for each remote VPS appear in Grafana;
+each server's node-exporter is reachable only over a private path, never from the public
+internet; and the monitoring's own availability gaps are documented rather than discovered.
+
+**Needs from the user:** the list of VPS hostnames or IPs, SSH access to each, and a choice of
+private transport (F7.1). Deploying node-exporter onto the VPSes needs access this repo does not
+have, so F7.2 is work done on those hosts, not here.
+
+**Why this is a separate sprint, and the one constraint that shapes it:** Prometheus *pulls*.
+It must open a connection to each target, which is fine from a NAT'd workstation — outbound
+works. The problem is the other end: port 9100 has to accept that connection, from a source
+address that changes. See D-014.
+
+### F7.1 A private path to each VPS
+- [ ] Choose between a mesh VPN (Tailscale or WireGuard) and SSH tunnels, and record it in `docs/Decisions.md` with the reasoning
+- [ ] Bring up the chosen transport between this workstation and every VPS
+- [ ] Confirm port 9100 is **not** reachable from the public internet on any VPS, before any scrape job is added
+
+**Acceptance criteria**
+- AC7.1.1: Given the transport is up, when Prometheus connects to each VPS node-exporter over the private path, then it succeeds.
+- AC7.1.2: Given each VPS, when port 9100 is probed from an address outside the private path, then the connection is refused or filtered. *(manual — must be run from off-network, not from this host)*
+- AC7.1.3: Given the workstation's public address changes, when the transport reconnects, then scraping resumes without a config edit — this is the requirement that rules out a firewall IP allowlist.
+- AC7.1.4: Given the transport is down, when Prometheus scrapes, then the targets report `down` with a connection error rather than appearing healthy with stale data.
+
+### F7.2 node-exporter on each VPS, bound privately
+- [ ] Install node-exporter on each VPS, as a container or a systemd unit
+- [ ] Bind it to the private interface address only, **not** `0.0.0.0` — `--web.listen-address=<private-ip>:9100`. This is S0.6 again, except the blast radius is the public internet
+- [ ] Apply the same `--collector.filesystem.mount-points-exclude` flags this repo already uses, so the metrics are comparable
+- [ ] Record the install steps in the Sprint 5 runbook so a new VPS can be added without rediscovering them
+
+**Acceptance criteria**
+- AC7.2.1: Given node-exporter on a VPS, when `ss -tlnp` is run on that host, then 9100 is bound to the private address and not to `0.0.0.0` or `::`.
+- AC7.2.2: Given node-exporter on each VPS, when `node_uname_info` is queried, then one series exists per VPS, each with a distinct `instance`.
+- AC7.2.3: Given the filesystem flags match this repo's, when `node_filesystem_size_bytes` is queried for a VPS, then no pseudo-filesystem mountpoints appear.
+- AC7.2.4: Given a VPS is rebooted, when it comes back, then node-exporter is running again without manual intervention.
+
+### F7.3 Targets, alerts and a dashboard per server
+- [ ] Add a scrape job with one target per VPS, labelled so each is identifiable in Grafana (`env`, `role` or similar)
+- [ ] Confirm the existing "Node Exporter Full" dashboard's `$job`/`$node` variables populate with the new instances — it was built for exactly this
+- [ ] Add disk-space and memory alerts as **ratios**, per-instance, not absolute byte counts (the G-002 mistake)
+- [ ] Make `InstanceDown` meaningful for real servers: the `for:` window is currently 15s, which is a demo value and will page on a brief network blip
+- [ ] Point blackbox at the sites these VPSes serve, which needs no new transport at all
+
+**Acceptance criteria**
+- AC7.3.1: Given the scrape job, when `/api/v1/targets` is queried, then every VPS appears with health `up` and its identifying labels.
+- AC7.3.2: Given the new instances, when the Node Exporter Full dashboard is opened, then the `node` dropdown lists every VPS and panels render for each.
+- AC7.3.3: Given a VPS disk crosses the threshold in a `promtool test rules` fixture, when the rules are evaluated, then the alert fires naming that instance.
+- AC7.3.4: Given a VPS with a different disk size from the others, when the disk alert is evaluated, then the threshold behaves correctly, proving it is a ratio and not an absolute value.
+- AC7.3.5: Given a 30-second network blip to one VPS, when the rules are evaluated, then `InstanceDown` does **not** fire.
+
+### F7.4 Be honest about the collector's availability
+- [ ] Document, in the runbook and in Grafana, that metrics stop whenever this workstation is asleep or off
+- [ ] Decide whether an external uptime service covers real downtime paging, since this stack provably cannot (D-014)
+- [ ] Check what the gaps look like after a real sleep/wake cycle, so they are recognisable rather than mysterious
+
+**Acceptance criteria**
+- AC7.4.1: Given the workstation sleeps for an hour and wakes, when the dashboard is opened for that window, then the gap is visibly a gap — not a flat line implying the servers were idle.
+- AC7.4.2: Given a VPS goes down while the workstation is off, when the workstation returns, then nothing claims the server was up during that window.
+- AC7.4.3: Given the decision on external paging, when `docs/Decisions.md` is read, then it records what this stack does and does not guarantee about being told a server is down.
+
+### Progress notes
+
 ---
 
 ## Known gaps carried out of Sprint 0
@@ -478,7 +542,7 @@ verifies which metrics actually arrive instead of assuming the documented set.
 | G-004 | All five service ports are published on `0.0.0.0`, with no auth or TLS on Prometheus, Alertmanager, node-exporter or blackbox | `docker-compose.yml` | High | Sprint 1 |
 | G-005 | Grafana still on `admin`/`admin`; `.env` and `config` hold placeholder credentials and are referenced by nothing | `.env`, `config` | High | Sprint 1 |
 | G-006 | `SSL_Expiry` description says 200 days, the expression tests 60 | `prometheus/alert_rules.yml` | Low | Sprint 2 |
-| G-007 | On Docker Desktop, node-exporter measures the WSL2 VM, not the Windows host | runtime | Medium | Sprint 4 |
+| G-007 | On Docker Desktop, node-exporter measures the WSL2 VM, not the Windows host | runtime | Medium | Sprint 4 — lower priority since 2026-11-16: the user's real targets are remote VPSes (D-014), so local host metrics matter less than they appeared to |
 | G-008 | All images pinned to `latest`; a rebuild can change versions silently | `docker-compose.yml` | Medium | Sprint 4 |
 | G-009 | 15d default retention, with no documented backup or restore of the TSDB | `docker-compose.yml` | Medium | Sprint 4 |
 | G-010 | The `version:` key in `docker-compose.yml` is obsolete and warns on every command | `docker-compose.yml` | Low | Sprint 3 |

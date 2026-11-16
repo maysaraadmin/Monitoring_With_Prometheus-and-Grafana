@@ -167,6 +167,33 @@ questions change shape:
 
 ---
 
+## Sprint 7 — Monitor remote VPSes
+### Threats
+This is the first sprint whose surface is **not** behind NAT. D-010 still holds for the
+monitoring host, but it does not extend to the targets: a VPS has a public IP, so findings here
+are rated as internet-facing.
+
+| ID | Threat | Area | Severity | Control | Test | Status |
+|---|---|---|---|---|---|---|
+| S7.1 | node-exporter on a VPS bound to `0.0.0.0:9100` — the public-internet version of S0.6. Unauthenticated, and it discloses kernel version, filesystems, interfaces, uptime and process counts to anyone who scans the address. Shodan indexes port 9100 | node-exporter | **High** | `--web.listen-address=<private-ip>:9100`, verified from off-network, before any scrape job is added | T7.S1 | ⬜ |
+| S7.2 | A firewall allowlist is used instead of a private transport, then silently stops matching when the workstation's address changes. Scraping fails, which looks like the servers are down, or the rule is widened "temporarily" to fix it | Network | High | A mesh VPN or SSH tunnel, so authorisation does not depend on a source IP (AC7.1.3) | T7.3 | ⬜ |
+| S7.3 | The mesh VPN or SSH key material needed to reach the VPSes is committed, or ends up in a tracked file. The same failure as S0.3, but the credential now grants access to production servers rather than a mailbox | Secrets | **High** | Key material only under the gitignored `secrets/`, never in `docker-compose.yml` or any committed config; the Sprint 3 secret scan covers it | T7.S3 | ⬜ |
+| S7.4 | The monitoring is trusted to report downtime that it provably cannot: the collector is off whenever the workstation is. An operator who has seen green dashboards for weeks will assume silence means health | Alerting | **High** | Document the gap where it is seen, not only in the docs (F7.4), and decide explicitly whether an external service covers paging (AC7.4.3) | T7.13 | ⬜ |
+| S7.5 | Metric labels now carry production hostnames, IPs, mount paths and site names for real infrastructure, and they travel into the TSDB, the F4.4 backup, and alert emails | Secrets | Medium | Keep the backup off shared storage (S4.2); use role labels rather than revealing names where it costs nothing | T7.S5 | ⬜ |
+| S7.6 | A compromised VPS serves hostile metric output to Prometheus — a very large or high-cardinality response that exhausts memory on the monitoring host | Prometheus | Medium | `sample_limit` and `label_limit` on the scrape job; the scrape timeout left at its default rather than raised | T7.S6 | ⬜ |
+| S7.7 | Blackbox is pointed at the user's own sites, and the probe targets reveal which sites belong to the same owner, in a public repo | Blackbox | Low | Keep the real target list in an untracked file if that matters, or accept it | T7.S7 | ⬜ |
+
+### Business-logic abuse cases
+The shape changes again: for the first time the stack reaches *into* production.
+
+- **What does an attacker gain from the monitoring host?** The private transport's credentials, and with them network reach to every VPS. The workstation is now part of the production trust boundary, which is an argument for D-014's rejected alternative.
+- **What does an attacker gain from a target?** If node-exporter is public (S7.1), a full inventory of the server before touching it.
+- **Can the monitoring be used to attack the servers?** Blackbox could already probe arbitrary URLs; Sprint 1 closed that by unpublishing it. Keep it closed — the private transport makes internal addresses reachable that were not before.
+- **Can a target attack the monitoring?** Yes, newly (S7.6). Prometheus parses whatever a target returns.
+- **Does anyone believe something the system cannot deliver?** Yes, and this is the one that will actually cost something (S7.4). Everything else here is a misconfiguration; this is a misunderstanding, and it survives correct configuration.
+
+---
+
 ## Audit (2026-11-16)
 First pass, done by reading the configs and probing the running stack. **Not a penetration
 test:** nothing was attacked from off-host, so the `T0.S*` rows in `docs/Test_scenarios.md` are

@@ -163,3 +163,37 @@ still safe; the TSDB is on a named volume.
 but it is one more thing that has to stay true. A `SIGHUP` instead — same effect as a restart,
 and less obvious to a reader.
 **Status:** Active
+
+## D-014 Monitor remote VPSes, with the collector staying on the workstation (2026-11-16)
+**Decision:** The targets are the user's own remote Linux VPSes. Prometheus, Alertmanager and
+Grafana stay on this NAT'd Windows workstation. Planned as Sprint 7.
+**Why the user chose it:** Nothing new has to be stood up or paid for, and the security posture
+Sprint 1 just established for the monitoring host stays valid.
+**Why the pull direction is not the problem people expect:** Prometheus dials out. A NAT'd
+collector reaching a remote target is the easy direction. The difficulty is entirely at the far
+end — port 9100 has to accept a connection from a source address that changes, which is what
+makes a firewall IP allowlist the wrong tool here (AC7.1.3) and a mesh VPN or SSH tunnel the
+right one (F7.1).
+**The limitation the user accepted, stated plainly:** monitoring stops whenever this workstation
+sleeps, reboots or is switched off, and the stack cannot tell anyone that it has stopped. So:
+
+- It **can** answer "how have my servers been behaving?" and "what did CPU and disk do last Tuesday?" — with holes wherever the laptop was off.
+- It **cannot** be relied on to tell you a server went down, because the most likely time to miss an outage is overnight, which is also when the workstation is least likely to be awake.
+- The dead-man's-switch planned in F2.5 cannot cover this. A dead-man's-switch needs an observer that outlives the thing it watches, and here the observer and the watched are the same machine.
+
+Recorded as threat **S7.4**, rated High, because it survives perfectly correct configuration.
+It is a misunderstanding rather than a misconfiguration, and the only fix is that someone knows.
+**What follows from accepting it:** real downtime paging, if it is wanted, needs something outside
+this stack — an external uptime service, which is cheap or free at this scale. AC7.4.3 forces
+that to be decided rather than assumed. F7.4 also requires the gap to be visible *in Grafana*,
+not only written down here, because the dashboard is what anyone will actually look at.
+**Rejected alternatives:**
+- *Moving Prometheus onto a VPS.* The technically correct answer: monitoring that runs on a server is awake when the user is not, and it removes S7.4 entirely. Declined for now. It would mean superseding D-010 and restoring the five network findings to their original High ratings, because the host would have a public IP — the work Sprint 1 did would need redoing against a harder threat model. Worth revisiting if the gaps become annoying in practice; that is the signal to come back to this.
+- *A firewall allowlist on each VPS instead of a private transport.* Fails on a dynamic source address, and the failure looks like "the servers are down" (S7.2), which is the worst possible way for it to fail.
+- *Exposing node-exporter publicly with TLS and basic auth.* Supported by node-exporter, and workable, but it puts an authenticated service on the public internet for every VPS, and port 9100 is indexed by internet-wide scanners. A private transport is less work and strictly better.
+- *Pushgateway.* Designed for batch jobs, not for host metrics. It would invert the direction so the VPSes push, which avoids the inbound problem, but it loses the `up` metric — and `up` is the one thing most worth having when a server dies.
+**Consequence to respect:** this workstation becomes part of the production trust boundary. The
+transport credentials on it grant network reach to every VPS (S7.3). That raises the stakes on
+the secrets handling Sprint 1 put in place: `secrets/` is now protecting server access, not just
+a mailbox password.
+**Status:** Active — Sprint 7 planned, nothing built
