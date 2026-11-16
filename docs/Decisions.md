@@ -258,3 +258,26 @@ range — hides the problem and costs useful history.
 genuinely unreachable still appears (it has samples, with `probe_success` 0), but a site removed
 from config drops out. That is the intended distinction.
 **Status:** Active
+
+## D-018 One dashboard per site, generated rather than hand-written (2026-11-16)
+**Decision:** Per-site dashboards are produced by `scripts/make-site-dashboards.py`, which
+derives each one from `grafana/provisioning/dashboards/websites.json`. Both kinds are kept: the
+templated multi-site board, and one dedicated board per site.
+**Why:** the user asked for a separate dashboard per website. Writing them by hand would mean
+N copies of the same seven panels drifting apart the first time one is edited. Generating them
+keeps a single definition: change `websites.json`, re-run the script.
+**Why the site list comes from Prometheus rather than `sites.yml`:** there is no YAML parser in
+the Python standard library and this project deliberately adds no dependencies. Prometheus is
+also the better source — it answers "what is actually being monitored", so a typo in
+`sites.yml` surfaces as a missing dashboard rather than as a dashboard full of "no data". The
+cost is that the stack must be running when the script is used.
+**Safety properties worth keeping:** the script only ever writes and deletes files matching
+`site-*.json`, so it cannot touch `websites.json`, `node_exporter.json` or anything hand-made;
+it asserts that no `$site` placeholder survives substitution, because one would render every
+panel empty; and it refuses to run if two sites would produce the same uid.
+**Consequence to respect:** these files are generated. Editing one directly works until the
+script is next run, then the edit is gone. Edit `websites.json` instead.
+**Rejected alternatives:** Grafana's panel `repeat` on a variable — gives repeated panels inside
+one dashboard, not separate dashboards with their own URLs, which is what was asked for.
+Hand-copying per site — N copies to maintain.
+**Status:** Active

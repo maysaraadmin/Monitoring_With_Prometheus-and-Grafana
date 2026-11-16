@@ -38,6 +38,18 @@ certificate expires, an availability timeline, total response time, and a breakd
 that time went (DNS, connect, TLS, server processing, transfer) — which is the panel that tells
 you *why* a site got slow.
 
+**Want a separate dashboard per site** instead of one with a dropdown? Generate them:
+
+```bash
+python scripts/make-site-dashboards.py
+docker compose restart grafana
+```
+
+That writes one `site-<slug>.json` per site currently being probed, each appearing in Grafana
+under its own name, and removes the ones for sites you have stopped probing. Safe to re-run; it
+only touches `site-*.json`. The panels are derived from `websites.json`, so edit that one file
+and re-run to change them all.
+
 ### 2. Host metrics (CPU, memory, disk) — needs one command per server
 
 Prometheus *pulls*, so it must reach each server's node-exporter. Dialling out
