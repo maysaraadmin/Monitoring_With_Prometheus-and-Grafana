@@ -52,6 +52,15 @@ A panel is not finished until all four read correctly:
 
 ## References
 - "Node Exporter Full", Grafana dashboard 1860, uid `rYdddlPWk` — the layout all panels follow.
-- The blackbox dashboard shown in the README is **not in this repo**; only `node_exporter.json`
-  exists. If it is wanted, it has to be imported and committed, and it is not currently planned
-  in any sprint.
+- "Website Monitoring", uid `website-monitoring`, written for this project
+  (`grafana/provisioning/dashboards/websites.json`). One templated dashboard rather than one file
+  per site: a `site` variable drives every panel, so each website has its own bookmarkable URL
+  (`/d/website-monitoring/website-monitoring?var-site=https://yoursite.com`) and a new site
+  appears in the dropdown as soon as it is added to `prometheus/targets/sites.yml`. Forms were
+  chosen by job: stat tiles for single headline values, a state timeline for up/down over time
+  (so a period with *no data* reads as blank rather than as a line at zero), one unstacked
+  series for total latency, and a stacked series for the phase breakdown. Status colours are
+  reserved and always paired with the words UP/DOWN, never colour alone.
+- The blackbox dashboard shown in the README's screenshots is still not the one in this repo;
+  `websites.json` above was written from scratch for this project rather than imported, so it
+  will not look like that screenshot.

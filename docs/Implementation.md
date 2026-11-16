@@ -508,6 +508,7 @@ address that changes. See D-014.
 ### F7.3 Targets, alerts and a dashboard per server
 - [x] Add a scrape job with one target per VPS — done as **file-based discovery** (`prometheus/targets/vps.yml`), so adding a server needs no edit to `prometheus.yml`. The file is gitignored (S7.5). Verified end to end: a target in that file was discovered and `node_memory_MemTotal_bytes` collected from it
 - [ ] Confirm the existing "Node Exporter Full" dashboard's `$job`/`$node` variables populate with the new instances — it was built for exactly this
+- [x] A per-site dashboard for the probed websites — added 2026-11-16 as `grafana/provisioning/dashboards/websites.json` (uid `website-monitoring`). Templated on a `site` variable rather than one file per site, so adding a URL to `sites.yml` is all that is needed. All five per-site panel queries verified returning real data through Grafana's own query API
 - [ ] Add disk-space and memory alerts as **ratios**, per-instance, not absolute byte counts (the G-002 mistake)
 - [ ] Make `InstanceDown` meaningful for real servers: the `for:` window is currently 15s, which is a demo value and will page on a brief network blip
 - [x] Point blackbox at the sites these VPSes serve — `prometheus/targets/sites.yml`, also gitignored (S7.7). Verified end to end: `probe_success 1` and a 39-day certificate reading for a real public URL

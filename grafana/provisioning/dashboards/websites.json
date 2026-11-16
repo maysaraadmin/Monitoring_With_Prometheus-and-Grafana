@@ -1,0 +1,346 @@
+{
+  "uid": "website-monitoring",
+  "title": "Website Monitoring",
+  "description": "Per-site availability, latency and TLS expiry from blackbox-exporter. Pick a site in the dropdown; each site has its own URL via ?var-site=<url>. Sites come from prometheus/targets/sites.yml.",
+  "tags": ["blackbox", "websites"],
+  "timezone": "browser",
+  "editable": true,
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-24h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "DS_PROM",
+        "label": "Data source",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 2
+      },
+      {
+        "name": "site",
+        "label": "Site",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${DS_PROM}" },
+        "query": { "query": "label_values(probe_success, instance)", "refId": "site-variable-query" },
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": false,
+        "multi": false,
+        "current": {}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "All sites",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "table",
+      "title": "Every monitored site",
+      "description": "All sites at once, regardless of the dropdown. Add sites in prometheus/targets/sites.yml, then restart Prometheus.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROM}" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 1 },
+      "targets": [
+        { "refId": "Up", "expr": "max by (instance, role) (probe_success)", "instant": true, "format": "table", "datasource": { "type": "prometheus", "uid": "${DS_PROM}" } },
+        { "refId": "Code", "expr": "max by (instance, role) (probe_http_status_code)", "instant": true, "format": "table", "datasource": { "type": "prometheus", "uid": "${DS_PROM}" } },
+        { "refId": "Latency", "expr": "max by (instance, role) (probe_duration_seconds)", "instant": true, "format": "table", "datasource": { "type": "prometheus", "uid": "${DS_PROM}" } },
+        { "refId": "CertDays", "expr": "max by (instance, role) ((probe_ssl_earliest_cert_expiry - time()) / 86400)", "instant": true, "format": "table", "datasource": { "type": "prometheus", "uid": "${DS_PROM}" } }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "job": true, "__name__": true },
+            "renameByName": {
+              "instance": "Site",
+              "role": "Role",
+              "Value #Up": "Status",
+              "Value #Code": "HTTP",
+              "Value #Latency": "Response",
+              "Value #CertDays": "Cert expires"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "left", "cellOptions": { "type": "auto" } },
+          "noValue": "no data"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Status" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "1": { "text": "UP", "color": "green", "index": 0 } } },
+                  { "type": "value", "options": { "0": { "text": "DOWN", "color": "red", "index": 1 } } }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Response" },
+            "properties": [{ "id": "unit", "value": "s" }, { "id": "decimals", "value": 2 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Cert expires" },
+            "properties": [
+              { "id": "unit", "value": "d" },
+              { "id": "decimals", "value": 0 },
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "red", "value": null },
+                    { "color": "yellow", "value": 14 },
+                    { "color": "green", "value": 30 }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "HTTP" },
+            "properties": [{ "id": "decimals", "value": 0 }]
+          }
+        ]
+      },
+      "options": { "showHeader": true, "footer": { "show": false } }
+    },
+    {
+      "type": "row",
+      "title": "$site",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Status",
+      "description": "probe_success. The word is the signal; the colour only repeats it.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROM}" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 10 },
+      "targets": [
+        { "refId": "A", "expr": "probe_success{instance=\"$site\"}", "instant": true, "legendFormat": "status", "datasource": { "type": "prometheus", "uid": "${DS_PROM}" } }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "not probed",
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "UP", "color": "green", "index": 0 } } },
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red", "index": 1 } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "text", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Uptime, selected range",
+      "description": "avg_over_time(probe_success) across the dashboard time range. 100% here only means every probe in range succeeded -- gaps where this machine was off are not counted as downtime. See docs/Decisions.md D-014.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROM}" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 10 },
+      "targets": [
+        { "refId": "A", "expr": "avg_over_time(probe_success{instance=\"$site\"}[$__range]) * 100", "instant": true, "legendFormat": "uptime", "datasource": { "type": "prometheus", "uid": "${DS_PROM}" } }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 2,
+          "noValue": "no data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 95 },
+              { "color": "green", "value": 99 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "HTTP status",
+      "description": "probe_http_status_code. 0 means the request never completed -- DNS, connection or timeout, not a server reply.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROM}" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 10 },
+      "targets": [
+        { "refId": "A", "expr": "probe_http_status_code{instance=\"$site\"}", "instant": true, "legendFormat": "code", "datasource": { "type": "prometheus", "uid": "${DS_PROM}" } }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "noValue": "no data",
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "no reply", "color": "red", "index": 0 } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "text", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "TLS certificate expires in",
+      "description": "Days until the earliest certificate in the chain expires. A negative value means it already has. Only present for targets that actually serve TLS -- an http:// URL that redirects to HTTPS will show one.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROM}" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 10 },
+      "targets": [
+        { "refId": "A", "expr": "(probe_ssl_earliest_cert_expiry{instance=\"$site\"} - time()) / 86400", "instant": true, "legendFormat": "days", "datasource": { "type": "prometheus", "uid": "${DS_PROM}" } }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "d",
+          "decimals": 0,
+          "noValue": "no TLS",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 14 },
+              { "color": "green", "value": 30 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "type": "state-timeline",
+      "title": "Availability over time",
+      "description": "One band per probe result. Blank stretches are periods with no data at all -- this machine was off, not the site. That distinction is the whole point of showing it this way rather than as a line at zero.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROM}" },
+      "gridPos": { "h": 5, "w": 24, "x": 0, "y": 14 },
+      "targets": [
+        { "refId": "A", "expr": "probe_success{instance=\"$site\"}", "legendFormat": "availability", "datasource": { "type": "prometheus", "uid": "${DS_PROM}" } }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "custom": { "fillOpacity": 90, "lineWidth": 0, "spanNulls": false },
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "UP", "color": "green", "index": 0 } } },
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red", "index": 1 } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "text", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "mergeValues": true,
+        "showValue": "never",
+        "alignValue": "center",
+        "rowHeight": 0.9,
+        "legend": { "showLegend": false, "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single", "sort": "none" }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Total response time",
+      "description": "probe_duration_seconds -- the whole probe, end to end. One series, so no legend: the title names it.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROM}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "targets": [
+        { "refId": "A", "expr": "probe_duration_seconds{instance=\"$site\"}", "legendFormat": "total", "datasource": { "type": "prometheus", "uid": "${DS_PROM}" } }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "noValue": "no data",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "showLegend": false, "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single", "sort": "none" }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Where the time goes",
+      "description": "The same request broken into its phases: DNS resolve, TCP connect, TLS handshake, server processing, transfer. Stacked, so the top of the stack is the total. This is the panel that tells you WHY a site got slow.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROM}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "targets": [
+        { "refId": "A", "expr": "probe_http_duration_seconds{instance=\"$site\"}", "legendFormat": "{{phase}}", "datasource": { "type": "prometheus", "uid": "${DS_PROM}" } }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "noValue": "no data",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 70,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "mode": "normal", "group": "A" },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": [] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    }
+  ]
+}
