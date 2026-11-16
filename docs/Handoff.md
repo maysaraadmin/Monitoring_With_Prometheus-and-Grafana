@@ -2,8 +2,8 @@
 
 ## Sprint 1 Handoff: secure the stack (2026-11-16)
 **Status:** ⚠️ Done with gaps
-**Commit / PR:** on branch `sprint-1-secure-the-stack`, recorded by the follow-up commit. Not
-pushed and not merged — awaiting the user's go-ahead.
+**Commit / PR:** `6e49621` on branch `sprint-1-secure-the-stack`. **Not pushed and not merged**
+— awaiting the user's go-ahead. `main` is unchanged at `82add16`.
 
 ### Delivered
 - **F1.1 Stop publishing the ports that nothing needs** — ACs passing: 3/4
