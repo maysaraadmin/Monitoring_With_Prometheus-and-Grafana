@@ -30,15 +30,34 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:1234']
 
+  # Remote VPS host metrics. Targets live in prometheus/targets/vps.yml, which
+  # is gitignored: this repo is public and the file holds real addresses (S7.5).
+  # Copy targets/vps.yml.example to targets/vps.yml and add your servers, then
+  # `docker compose restart prometheus`. No edit to this file is needed.
+  # If the file does not exist, Prometheus logs a warning and carries on.
+  - job_name: 'vps'
+    file_sd_configs:
+      - files: ['/etc/prometheus/targets/vps.yml']
+        refresh_interval: 1m
+    # A compromised or broken target must not be able to exhaust the collector
+    # by returning a huge or high-cardinality response (S7.6).
+    sample_limit: 5000
+    label_limit: 30
+
   - job_name: 'blackbox'
     metrics_path: /probe
     params:
       module: [http_2xx]  # Look for a HTTP 200 response.
     static_configs:
+      # Deliberately unreachable, to demonstrate the site-down alert (D-004).
       - targets:
-        - http://prometheus.io    # Target to probe with http.
-        - https://prometheus.io   # Target to probe with https.
-        - http://example.com:8080 # Target to probe with http on port 8080. This is for getting site down alert
+        - http://example.com:8080
+    # Your own sites go in prometheus/targets/sites.yml, also gitignored so the
+    # list of domains you own is not published here (S7.7). This needs no
+    # software on the server and works through NAT today.
+    file_sd_configs:
+      - files: ['/etc/prometheus/targets/sites.yml']
+        refresh_interval: 1m
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target

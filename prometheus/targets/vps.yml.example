@@ -1,0 +1,35 @@
+# Remote VPS host metrics (CPU, memory, disk, network).
+#
+#   cp vps.yml.example vps.yml      # vps.yml is gitignored
+#   # edit vps.yml, then:
+#   docker compose restart prometheus
+#
+# Each address must be one Prometheus can reach PRIVATELY -- a Tailscale or
+# WireGuard IP, or 127.0.0.1:<port> for an SSH tunnel. Never a public IP with
+# port 9100 open: that publishes the host's inventory to anyone who scans it
+# (docs/Security_issues.md S7.1).
+#
+# Run scripts/install-node-exporter.sh on each VPS first.
+
+- targets:
+    - '100.101.102.103:9100'
+  labels:
+    instance: 'web-1'
+    role: 'web'
+
+- targets:
+    - '100.101.102.104:9100'
+  labels:
+    instance: 'db-1'
+    role: 'db'
+
+# Using SSH tunnels instead of a mesh VPN? Open one per server with a distinct
+# local port, e.g.
+#   ssh -N -L 19100:127.0.0.1:9100 user@web-1
+# and list the local end here. Note that a tunnel dying looks exactly like the
+# server dying, and that nothing restarts these for you (AC7.1.4).
+#
+# - targets: ['host.docker.internal:19100']
+#   labels:
+#     instance: 'web-1'
+#     role: 'web'

@@ -43,7 +43,7 @@ See D-001.
 | 4 | Real targets, pinned images, retention and restore | ⬜ | |
 | 5 | Go-live and runbook | ⬜ | |
 | 6 | Container monitoring (cAdvisor) | ⬜ | |
-| 7 | Monitor remote VPSes | ⬜ | |
+| 7 | Monitor remote VPSes | 🟡 | monitoring side built 2026-11-16; VPS side needs server access |
 
 Sprints 1–5 were approved by the user on 2026-11-16 and planned in detail below.
 Deployment context confirmed the same day: **one Windows workstation behind NAT** (D-010),
@@ -494,9 +494,9 @@ address that changes. See D-014.
 - AC7.1.4: Given the transport is down, when Prometheus scrapes, then the targets report `down` with a connection error rather than appearing healthy with stale data.
 
 ### F7.2 node-exporter on each VPS, bound privately
-- [ ] Install node-exporter on each VPS, as a container or a systemd unit
-- [ ] Bind it to the private interface address only, **not** `0.0.0.0` — `--web.listen-address=<private-ip>:9100`. This is S0.6 again, except the blast radius is the public internet
-- [ ] Apply the same `--collector.filesystem.mount-points-exclude` flags this repo already uses, so the metrics are comparable
+- [x] ~~Install node-exporter on each VPS~~ — `scripts/install-node-exporter.sh` written and reviewable; **must be run on each VPS by the user**, this session has no access
+- [x] Bind it to the private interface address only — the script takes the bind address as a required argument and **refuses** `0.0.0.0`/`::` outright, then verifies with `ss` after start rather than assuming
+- [x] Apply the same `--collector.filesystem.mount-points-exclude` flags this repo already uses, so the metrics are comparable
 - [ ] Record the install steps in the Sprint 5 runbook so a new VPS can be added without rediscovering them
 
 **Acceptance criteria**
@@ -506,11 +506,11 @@ address that changes. See D-014.
 - AC7.2.4: Given a VPS is rebooted, when it comes back, then node-exporter is running again without manual intervention.
 
 ### F7.3 Targets, alerts and a dashboard per server
-- [ ] Add a scrape job with one target per VPS, labelled so each is identifiable in Grafana (`env`, `role` or similar)
+- [x] Add a scrape job with one target per VPS — done as **file-based discovery** (`prometheus/targets/vps.yml`), so adding a server needs no edit to `prometheus.yml`. The file is gitignored (S7.5). Verified end to end: a target in that file was discovered and `node_memory_MemTotal_bytes` collected from it
 - [ ] Confirm the existing "Node Exporter Full" dashboard's `$job`/`$node` variables populate with the new instances — it was built for exactly this
 - [ ] Add disk-space and memory alerts as **ratios**, per-instance, not absolute byte counts (the G-002 mistake)
 - [ ] Make `InstanceDown` meaningful for real servers: the `for:` window is currently 15s, which is a demo value and will page on a brief network blip
-- [ ] Point blackbox at the sites these VPSes serve, which needs no new transport at all
+- [x] Point blackbox at the sites these VPSes serve — `prometheus/targets/sites.yml`, also gitignored (S7.7). Verified end to end: `probe_success 1` and a 39-day certificate reading for a real public URL
 
 **Acceptance criteria**
 - AC7.3.1: Given the scrape job, when `/api/v1/targets` is queried, then every VPS appears with health `up` and its identifying labels.

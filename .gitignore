@@ -7,3 +7,8 @@ secrets/
 
 # Editor-local settings, not project configuration
 .vscode/
+
+# Real target lists: these hold VPS addresses and the domains you own, and
+# this repo is public (S7.5, S7.7). The .example twins are committed instead.
+prometheus/targets/vps.yml
+prometheus/targets/sites.yml

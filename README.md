@@ -7,6 +7,77 @@ Monitoring Linux Server with Prometheus and Grafana. Node and Blackbox exporter.
 </p>
 </br>
 
+# Monitoring your own VPSes
+
+Two independent halves. Do the first one even if you never do the second.
+
+### 1. Site and certificate monitoring — works immediately
+
+Up/down, HTTP status, response time and TLS-expiry alerts for any public URL.
+Nothing to install on the server, nothing to open in a firewall: the probe is an
+ordinary outbound request, so it works from behind NAT.
+
+```bash
+cp prometheus/targets/sites.yml.example prometheus/targets/sites.yml
+# edit it: add your URLs
+docker compose restart prometheus
+```
+
+### 2. Host metrics (CPU, memory, disk) — needs one command per server
+
+Prometheus *pulls*, so it must reach each server's node-exporter. Dialling out
+from a NAT'd machine is fine; the work is making port 9100 reachable **privately**.
+Set up a mesh VPN (Tailscale or WireGuard) between this machine and your servers
+first, or use an SSH tunnel. Do **not** open 9100 to the internet — it is
+unauthenticated and indexed by internet-wide scanners.
+
+On each VPS, as root:
+
+```bash
+curl -fsSL <this-repo>/raw/main/scripts/install-node-exporter.sh -o install-node-exporter.sh
+less install-node-exporter.sh      # read it first; it runs as root
+bash install-node-exporter.sh 100.101.102.103    # the PRIVATE address to bind
+```
+
+The script verifies the download's checksum, installs a hardened systemd unit,
+refuses to bind to `0.0.0.0`, and prints the line to add here. Then:
+
+```bash
+cp prometheus/targets/vps.yml.example prometheus/targets/vps.yml
+# edit it: add each server
+docker compose restart prometheus
+```
+
+The bundled "Node Exporter Full" dashboard picks up the new servers in its
+`node` dropdown with no further work.
+
+Both target files are gitignored, so your server addresses and domain list stay
+out of this public repo.
+
+### One limitation, stated plainly
+
+This stack collects only while this machine is awake, and it cannot tell you
+when it has stopped. It will answer *"how have my servers been behaving?"*, with
+gaps wherever the machine was off. It is **not** reliable for *"page me when a
+server goes down"* — the likeliest time to miss an outage is overnight, which is
+also when this machine is least likely to be on. For real paging, run an
+external uptime service alongside it, or move this stack onto a server.
+See `docs/Decisions.md` D-014.
+
+### Access
+
+Grafana http://localhost:3001 · Prometheus http://localhost:9090 · Alertmanager
+http://localhost:9093 — all bound to loopback only. node-exporter and blackbox
+have no host port; Prometheus reaches them over the Compose network.
+
+The Grafana password lives in `.env.local` (untracked):
+`cp .env.local.example .env.local` and set one before first start. If Grafana
+rejects a password you know is right, check `docker logs grafana` for
+"login for user temporarily blocked" — five failed attempts locks the account for
+about five minutes.
+
+Planning, security findings and decisions are in [docs/](docs/).
+
 # Introduction:
 Prometheus is a open-source platform for monitoring hardware and services. It collects metrics from the system of any other services that we configured.
 

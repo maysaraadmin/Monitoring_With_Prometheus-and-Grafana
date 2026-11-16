@@ -1,0 +1,29 @@
+# Public URLs to probe from outside: up/down, HTTP status, response time, and
+# TLS certificate expiry.
+#
+#   cp sites.yml.example sites.yml      # sites.yml is gitignored
+#   # edit sites.yml, then:
+#   docker compose restart prometheus
+#
+# This is the half that works TODAY. It needs nothing installed on the server
+# and nothing opened in a firewall -- the probe is an ordinary outbound HTTPS
+# request, so NAT is irrelevant. If all you want is "tell me when a site is
+# down or a certificate is about to expire", this file is the whole job.
+#
+# Keep the real list here rather than in prometheus.yml: this file is
+# gitignored, and the repo is public (docs/Security_issues.md S7.7).
+#
+# Use the full URL including the scheme. Both http:// and https:// are fine;
+# note that an http:// URL which redirects to HTTPS will still report a
+# certificate, so it will take part in the TLS-expiry alert.
+
+- targets:
+    - 'https://example.com'
+    - 'https://www.example.com'
+  labels:
+    role: 'site'
+
+- targets:
+    - 'https://api.example.com/health'
+  labels:
+    role: 'api'
