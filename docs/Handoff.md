@@ -2,8 +2,9 @@
 
 ## Sprint 0 Handoff: baseline (2026-11-16)
 **Status:** ⚠️ Done with gaps
-**Commit / PR:** docs not yet committed. The config fixes that preceded them are commit
-`d052b8e` on `origin/main` (`maysaraadmin/Monitoring_With_Prometheus-and-Grafana`).
+**Commit / PR:** docs are commit `6e81e92`; the config fixes that preceded them are `d052b8e`.
+Both pushed to `origin/main` (`maysaraadmin/Monitoring_With_Prometheus-and-Grafana`). No PR —
+see D-008.
 
 ### Delivered
 No features were built in this sprint. An existing 2023 Compose stack was made to run, then
