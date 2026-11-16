@@ -36,9 +36,9 @@ Status recorded 2026-11-16 against commit `d052b8e`.
 | T0.4.1 | AC0.4.1 | static | `promtool check rules /etc/prometheus/alert_rules.yml` | "SUCCESS: 4 rules found", exit 0 | ✅ |
 | T0.4.2 | AC0.4.2 | static | `amtool check-config /config/alertmanager.yml` | SUCCESS, 1 receiver, 0 inhibit rules | ✅ |
 | T0.4.3 | AC0.4.3 | integration | `/api/v1/alerts` after the `dummy_node` target has been down 15s | `InstanceDown` state `firing` for `localhost:1234` | ✅ |
-| T0.4.4 | AC0.4.4 | integration | `GET :9093/api/v2/alerts` | the firing Prometheus alerts also listed in Alertmanager | ⬜ not yet run |
+| T0.4.4 | AC0.4.4 | integration | `GET :9093/api/v2/alerts` | the firing Prometheus alerts also listed in Alertmanager | ⬜ not yet run — but Alertmanager is now scraped, and its `alertmanager_notifications_failed_total{integration="email"}` shows non-zero failures, which proves alerts are reaching it |
 | T0.4.5 | AC0.4.5 | manual | let an alert fire and check the on-call inbox | email arrives | ❌ fails: Gmail `535 BadCredentials` in `docker logs alertmgr` (G-001) |
-| T0.4.6 | G-002 | static | assert `HostMemoryIsUnderutilized` does not fire on a healthy host | rule should not be firing | ❌ fails: fires permanently, `node_memory_MemAvailable_bytes` was 14943088640 against a threshold of `80` |
+| T0.4.6 | G-002 | static | assert `HostMemoryIsUnderutilized` does not fire on a healthy host | rule should not be firing | ✅ **passes since 2026-11-16** — rewritten as a ratio with `for: 1w` (D-015); state is now `pending`, not firing |
 
 ## Sprint 0.5 — Blackbox website probing
 | ID | Covers | Type | Scenario | Expected | Status |
@@ -56,7 +56,7 @@ Status recorded 2026-11-16 against commit `d052b8e`.
 | T0.S4 | S0.4 | from another host, curl `http://<host-ip>:9115/probe?target=http://169.254.169.254/&module=http_2xx` | refused | ❌ fails: blackbox is an open relay for outbound probes (G-004) |
 | T0.S5 | S0.5 | from another host, POST `http://<host-ip>:9093/api/v2/silences` | refused | ❌ fails: anyone on the LAN can silence alerts (G-004) |
 | T0.S6 | S0.6 | from another host on the LAN, curl `http://<host-ip>:9100/metrics` | refused | ❌ fails: port 9100 is published, and only Prometheus needs it (G-004) |
-| T0.S7 | S0.7 | query `alertmanager_notifications_failed_total` and assert an alert rule exists that fires on it | a rule covers notification failure | ❌ fails: no such rule, so a broken alert channel is invisible |
+| T0.S7 | S0.7 | query `alertmanager_notifications_failed_total` and assert an alert rule exists that fires on it | a rule covers notification failure | ✅ **passes since 2026-11-16** — an `alertmanager` scrape job was added (the metric was never collected before, so no rule *could* have worked) plus `AlertmanagerNotificationsFailing`. Verified the metric arrives and already records `email` failures |
 
 ### UI checks
 Grafana is third-party UI, so the design-system checks do not apply. What is worth checking on

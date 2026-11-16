@@ -14,14 +14,23 @@ groups:
 
 - name: NodeMemUsgae
   rules:
+    # Fixed 2026-11-16 (I-006). Was:
+    #   expr: ({__name__="node_memory_MemAvailable_bytes", instance="node-exporter:9100", job="node"} > 80)
+    # which compared a byte count to the literal 80 and so was always true --
+    # it fired permanently on a healthy host. Now a percentage, matching the
+    # alert's name and description. The hardcoded instance/job selector is gone
+    # too, so the rule covers every node target instead of one (AC2.1.4).
     - alert: HostMemoryIsUnderutilized
-      expr: ({__name__="node_memory_MemAvailable_bytes", instance="node-exporter:9100", job="node"} > 80)
-      for: 15s
+      expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100 > 80
+      # A week, as the description says. This is a capacity-planning signal,
+      # not an incident: nothing is wrong, the host is just larger than it
+      # needs to be. A short window would make it noise.
+      for: 1w
       labels:
-        severity: critical
+        severity: info
       annotations:
-        summary: Host Memory is underutilized (instance {{ $labels.instance }})
-        description: "Node memory is < 20% for 1 week. Consider reducing memory space. (instance {{ $labels.instance }})\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+        summary: Host memory is underutilized (instance {{ $labels.instance }})
+        description: "More than 80% of memory has been free for a week. Consider a smaller host. (instance {{ $labels.instance }})\n  VALUE = {{ $value }}% free\n  LABELS = {{ $labels }}"
 
 - name: HTTP_Status_Failure
   rules:
@@ -36,11 +45,47 @@ groups:
 
 - name: SSL_Expiry
   rules:
+    # Fixed 2026-11-16 (I-008). Was:
+    #   expr: 0 <= round((last_over_time(probe_ssl_earliest_cert_expiry[10m]) - time()) / 86400, 0.1) < 60
+    # Two bugs. The `0 <=` lower bound excluded already-expired certificates,
+    # so the one case you most want to hear about was silently skipped. And
+    # probe_ssl_earliest_cert_expiry is 0 for a plain-http target, which the
+    # lower bound then matched, so http:// targets alerted about a certificate
+    # they do not have. Now: alert only where a certificate actually exists,
+    # and include expired ones. The description said 200 days while the
+    # expression tested 60; both now say 60.
     - alert: BlackboxSslCertificateWillExpireSoon
-      expr: 0 <= round((last_over_time(probe_ssl_earliest_cert_expiry[10m]) - time()) / 86400, 0.1) < 60
+      expr: |
+        (last_over_time(probe_ssl_earliest_cert_expiry[10m]) - time()) / 86400 < 60
+          and
+        last_over_time(probe_ssl_earliest_cert_expiry[10m]) > 0
       for: 0m
       labels:
         severity: warning
       annotations:
         summary: Blackbox SSL certificate will expire soon (instance {{ $labels.instance }})
-        description: "SSL certificate expires in less than 200 days\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+        description: "SSL certificate expires in less than 60 days (a negative value means it has already expired)\n  VALUE = {{ $value }} days\n  LABELS = {{ $labels }}"
+
+# Added 2026-11-16 (I-011, S0.7). Sprint 1 proved that Alertmanager starting
+# cleanly says nothing about whether it can deliver: it reads the SMTP password
+# file at notify time, so a missing or placeholder secret fails silently.
+# Nothing was watching for that. These rules watch the notifier itself.
+- name: Alerting_Pipeline
+  rules:
+    - alert: AlertmanagerNotificationsFailing
+      expr: rate(alertmanager_notifications_failed_total[5m]) > 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: Alertmanager cannot deliver notifications ({{ $labels.integration }})
+        description: "Alerts are firing but notifications are failing, so nobody is being told. Check `docker logs alertmgr`. A 535 from Gmail means the app password in secrets/smtp_password is wrong or still a placeholder.\n  VALUE = {{ $value }} failures/sec\n  LABELS = {{ $labels }}"
+
+    - alert: AlertmanagerDown
+      expr: up{job="alertmanager"} == 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: Alertmanager is not being scraped
+        description: "Prometheus cannot reach Alertmanager, so no alert can reach anyone. This alert itself cannot be delivered -- it is visible only in the Prometheus UI, which is the limit of a single-host setup (see docs/Decisions.md D-014)."

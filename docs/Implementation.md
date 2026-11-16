@@ -38,8 +38,8 @@ See D-001.
 | 0.4 | Alert rules and routing (existing) | ⚠️ | Sprint 0 |
 | 0.5 | Blackbox website probing (existing) | ✅ | Sprint 0 |
 | 1 | Secure the stack | ⚠️ | Sprint 1 |
-| 2 | Correct the alert rules and deliver notifications | ⬜ | |
-| 3 | CI config validation | ⬜ | |
+| 2 | Correct the alert rules and deliver notifications | 🟡 | partial, 2026-11-16 |
+| 3 | CI config validation | ⬜ (F3.4 housekeeping done early) | |
 | 4 | Real targets, pinned images, retention and restore | ⬜ | |
 | 5 | Go-live and runbook | ⬜ | |
 | 6 | Container monitoring (cAdvisor) | ⬜ | |
@@ -537,12 +537,12 @@ address that changes. See D-014.
 | ID | Gap | Where | Severity | Planned |
 |---|---|---|---|---|
 | G-001 | Alertmanager SMTP has placeholder credentials; every notification fails with Gmail 535 and retries every 30s | `alertmanager/alertmanager.yml` | High | Sprint 2 |
-| G-002 | `HostMemoryIsUnderutilized` compares a byte count to the literal `80`, so it is always true and fires permanently | `prometheus/alert_rules.yml` | High | Sprint 2 |
+| G-002 | ~~`HostMemoryIsUnderutilized` compares a byte count to the literal `80`~~ | `prometheus/alert_rules.yml` | High | ✅ Fixed 2026-11-16 (I-006, D-015) |
 | G-003 | No CI: nothing validates the YAML before a commit, which is how the two Sprint 0 parse errors shipped | repo | Medium | Sprint 3 |
 | G-004 | All five service ports are published on `0.0.0.0`, with no auth or TLS on Prometheus, Alertmanager, node-exporter or blackbox | `docker-compose.yml` | High | Sprint 1 |
 | G-005 | Grafana still on `admin`/`admin`; `.env` and `config` hold placeholder credentials and are referenced by nothing | `.env`, `config` | High | Sprint 1 |
-| G-006 | `SSL_Expiry` description says 200 days, the expression tests 60 | `prometheus/alert_rules.yml` | Low | Sprint 2 |
+| G-006 | ~~`SSL_Expiry` description says 200 days, the expression tests 60~~ | `prometheus/alert_rules.yml` | Low | ✅ Fixed 2026-11-16 (I-008), along with a worse bug it hid: expired certificates were excluded |
 | G-007 | On Docker Desktop, node-exporter measures the WSL2 VM, not the Windows host | runtime | Medium | Sprint 4 — lower priority since 2026-11-16: the user's real targets are remote VPSes (D-014), so local host metrics matter less than they appeared to |
 | G-008 | All images pinned to `latest`; a rebuild can change versions silently | `docker-compose.yml` | Medium | Sprint 4 |
 | G-009 | 15d default retention, with no documented backup or restore of the TSDB | `docker-compose.yml` | Medium | Sprint 4 |
-| G-010 | The `version:` key in `docker-compose.yml` is obsolete and warns on every command | `docker-compose.yml` | Low | Sprint 3 |
+| G-010 | ~~The `version:` key in `docker-compose.yml` is obsolete~~ | `docker-compose.yml` | Low | ✅ Fixed 2026-11-16 (I-009) |

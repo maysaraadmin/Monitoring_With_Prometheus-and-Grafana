@@ -197,3 +197,29 @@ transport credentials on it grant network reach to every VPS (S7.3). That raises
 the secrets handling Sprint 1 put in place: `secrets/` is now protecting server access, not just
 a mailbox password.
 **Status:** Active — Sprint 7 planned, nothing built
+
+## D-015 What HostMemoryIsUnderutilized was meant to detect (2026-11-16)
+**Decision:** The rule means what its name and description say: alert when the host has *too
+much* free memory for a sustained period, as a capacity-planning signal. Implemented as
+`node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100 > 80`, `for: 1w`, severity
+`info`.
+**Why this reading:** the original was internally contradictory — the name said underutilized,
+the description said "< 20% for 1 week. Consider reducing memory space", the severity said
+`critical`, and the expression compared a raw byte count to the literal `80`. Four different
+rules. The name and the description agree with each other, and two out of four wins: this is a
+"your host is bigger than it needs to be" observation, not an incident. That also explains the
+one-week window, which the original had as 15 seconds.
+**What follows:** severity dropped from `critical` to `info`, because nothing is wrong when it
+fires. The window is a week, so it will not fire for a week even though this host is currently
+at 90.6% free — which is the correct behaviour for a capacity signal and incidentally removes it
+from the permanently-firing set.
+**What this rule is NOT:** there is still **no alert for memory pressure** — the opposite
+condition, and the one most people actually want. That is a genuine gap, not an oversight of
+this fix: adding it was not in scope for "fix the broken rule". Worth adding in Sprint 7
+alongside the per-server disk and memory alerts (F7.3), where it belongs.
+**Rejected alternatives:** Reading it as a memory-*pressure* alert, which is what the
+`> 80` threshold would suggest if you ignore the name — rejected because it contradicts both the
+name and the description, and silently changing what an alert means is worse than fixing its
+arithmetic. Deleting the rule — it does express a real intent, and the original author wrote it
+on purpose.
+**Status:** Active

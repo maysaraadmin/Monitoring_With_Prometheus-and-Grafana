@@ -20,6 +20,12 @@ scrape_configs:
     static_configs:
       - targets: ['node-exporter:9100']
 
+  # Added 2026-11-16 (I-011, S0.7). Without this job, Alertmanager's own
+  # metrics are not collected, so nothing can alert on notifications failing.
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+
   - job_name: 'dummy_node'
     static_configs:
       - targets: ['localhost:1234']
