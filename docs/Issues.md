@@ -1,0 +1,23 @@
+# Issues
+
+Issues found by manual QA. Baseline entries below come from bringing the project under the
+workflow on 2026-11-16; they are the things that were observed failing, as distinct from the
+gap list in `docs/Implementation.md` (which includes risks nobody has hit yet).
+
+| ID | Sprint | Area | Type | Severity | Description | Steps to reproduce | Status |
+|---|---|---|---|---|---|---|---|
+| I-001 | 0.4 | Alerting | Bug | High | Prometheus would not start at all: the rule file failed to parse, so the container exited on boot | 1. Check out `7e480f8` 2. `docker compose up -d` 3. `docker logs prometheus` shows a YAML error on `alert_rules.yml` | ✅ Fixed — `rules:` under `NodeMemUsgae` was indented 3 spaces instead of 2 (`d052b8e`) |
+| I-002 | 0.4 | Alerting | Bug | High | Alertmanager would not start: `to: '<receiver's email id here>'` has an apostrophe inside a single-quoted YAML scalar | 1. Check out `7e480f8` 2. `docker compose up -d` 3. `docker logs alertmgr` shows a YAML parse error | ✅ Fixed — switched the placeholder to double quotes and removed the apostrophe (`d052b8e`) |
+| I-003 | 0.1 | Grafana | Bug | High | Grafana could not bind its host port, so no dashboard was reachable | 1. Have any other service listening on host port 3000 2. `docker compose up -d` 3. Grafana fails to publish | ✅ Fixed — moved to host port 3001 (`d052b8e`, D-007) |
+| I-004 | 0.3 | Grafana | Bug | Medium | Dashboards and Grafana settings were lost on `docker compose down` | 1. Edit a dashboard 2. `docker compose down` 3. `up -d` 4. The edit is gone | ✅ Fixed — was bind-mounting `/grafana_data`; now uses the declared `grafana_data` named volume (`d052b8e`) |
+| I-005 | 0.3 | Grafana | UI/UX | Low | Opening http://localhost:3001 shows Grafana's welcome page, so the dashboard looks like it was never provisioned | 1. `docker compose up -d` 2. Open the Grafana root URL 3. No dashboard is shown | ✅ Fixed — set the Node Exporter dashboard as the home dashboard; rule added to `docs/UI_guidelines.md` |
+| I-006 | 0.4 | Alerting | Bug | High | `HostMemoryIsUnderutilized` fires permanently on a healthy host. The expression compares `node_memory_MemAvailable_bytes` (14.9 GB) to the literal `80`, so it is always true. The alert name, its `critical` severity, and a description talking about "< 20% for 1 week" do not match each other or the expression | 1. `docker compose up -d` 2. `curl localhost:9090/api/v1/alerts` 3. The alert is firing with no memory problem present | ⬜ Open — G-002, planned Sprint 2 |
+| I-007 | 0.4 | Alerting | Bug | High | No alert email ever arrives. Alertmanager retries every 30s and logs `535 BadCredentials` from Gmail | 1. `docker compose up -d` 2. Wait for an alert to fire 3. `docker logs alertmgr \| grep Notify` | ⬜ Open — G-001, placeholder credentials; planned Sprint 2 |
+| I-008 | 0.4 | Alerting | Bug | Low | `BlackboxSslCertificateWillExpireSoon` fires for `http://prometheus.io` as well as the https target, and its description says "less than 200 days" while the expression tests 60 | 1. `curl localhost:9090/api/v1/alerts` 2. Two SSL alerts appear, one for a plain-http target | ⬜ Open — G-006, planned Sprint 2 |
+| I-009 | 0.1 | Compose | UI/UX | Low | Every `docker compose` command prints a warning that the `version:` key is obsolete | 1. Run any `docker compose` command | ⬜ Open — G-010, planned Sprint 3 |
+| I-010 | 0.2 | Metrics | Bug | **High** | On Docker Desktop for Windows the dashboard shows the WSL2 VM's CPU, memory and disk, not the Windows host's, so the numbers do not match Task Manager. Raised from Medium on 2026-11-16: the user confirmed this workstation is the only thing the stack runs on and is meant to watch, which means **the machine it exists to monitor is not being monitored**, and the plausible-looking numbers hide that | 1. Run the stack on Docker Desktop for Windows 2. Compare the dashboard's memory total to Task Manager | ⬜ Open — G-007, D-011. Planned as F4.1/AC4.1.1 in Sprint 4; needs the user's choice between `windows_exporter`, accepting the VM, or moving to a Linux host |
+
+Severity: **High** blocks a main flow, loses data, or is a security problem · **Medium** wrong
+behaviour with a workaround · **Low** cosmetic or wording.
+
+Status: ⬜ Open · 🟡 In progress · ✅ Fixed (with a one-line note) · Won't fix (with the reason).
