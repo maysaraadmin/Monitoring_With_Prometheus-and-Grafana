@@ -9,7 +9,7 @@
   "timezone": "browser",
   "editable": true,
   "schemaVersion": 39,
-  "version": 2,
+  "version": 5,
   "refresh": "1m",
   "time": {
     "from": "now-24h",
@@ -496,7 +496,7 @@
     {
       "type": "stat",
       "title": "TLS certificate expires in",
-      "description": "Days until the earliest certificate in the chain expires. A negative value means it already has. Only present for targets that actually serve TLS -- an http:// URL that redirects to HTTPS will show one.",
+      "description": "Days until the earliest certificate in the chain expires. A negative value means it already has. Only present for targets that actually serve TLS -- an http:// URL that redirects to HTTPS will show one. Blank means no probe has succeeded in the range, so the certificate could not be read -- it does not mean the site has no certificate.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROM}"
@@ -523,7 +523,7 @@
         "defaults": {
           "unit": "d",
           "decimals": 0,
-          "noValue": "no TLS",
+          "noValue": "unknown",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -817,6 +817,264 @@
       }
     },
     {
+      "type": "stat",
+      "title": "Connection-level failures",
+      "description": "Probes that got NO HTTP reply -- the connection was refused, dropped or timed out before the server said anything. A run of these usually means a firewall is blocking this machine (rate limiting, fail2ban, CSF) or the host is unreachable. It does NOT mean the site is broken for everyone: check from another network before assuming an outage.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROM}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 18
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count_over_time((probe_http_status_code{instance=\"$site\"} == 0)[$__range:30s])",
+          "instant": true,
+          "legendFormat": "v",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Replied, then failed",
+      "description": "Probes where the server DID start replying but the probe still failed. Two causes, both the server's: a status outside 200-399 (a 500, 403 or WAF rejection), or -- more often -- a 200 that could not finish transferring before the scrape timeout cut it off. The second case means the page starts arriving and then crawls, which page weight alone rarely explains. If this is high while connection-level failures are 0, the host is reachable but struggling.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROM}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 18
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count_over_time((probe_success{instance=\"$site\"} == 0 and probe_http_status_code{instance=\"$site\"} > 0)[$__range:30s])",
+          "instant": true,
+          "legendFormat": "v",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Slowest response",
+      "description": "The worst single probe in the range. If this sits at a flat number equal to the scrape timeout (20s for this job), those probes did not finish -- they were cut off, so the real figure is 'at least this'. Compare with the median: a large gap means the site is inconsistent rather than uniformly slow.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROM}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 18
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max_over_time(probe_duration_seconds{instance=\"$site\"}[$__range])",
+          "instant": true,
+          "legendFormat": "v",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 3
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Fastest response",
+      "description": "The best single probe in the range. This is what the site is capable of when nothing is in the way, so it is the realistic target for the median. A low number here with a high median means the slowness is intermittent, not structural.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROM}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 18
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "min_over_time(probe_duration_seconds{instance=\"$site\"}[$__range])",
+          "instant": true,
+          "legendFormat": "v",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
       "type": "state-timeline",
       "title": "Availability over time",
       "description": "One band per probe result. Blank stretches are periods with no data at all -- this machine was off, not the site. That distinction is the whole point of showing it this way rather than as a line at zero.",
@@ -828,7 +1086,7 @@
         "h": 5,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 22
       },
       "targets": [
         {
@@ -911,7 +1169,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 23
+        "y": 27
       },
       "targets": [
         {
@@ -964,7 +1222,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 23
+        "y": 27
       },
       "targets": [
         {
@@ -1022,7 +1280,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 31
+        "y": 35
       },
       "targets": [
         {
@@ -1075,7 +1333,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 31
+        "y": 35
       },
       "targets": [
         {
@@ -1139,6 +1397,78 @@
           }
         },
         "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Getting connected (TCP and TLS)",
+      "description": "Time to open the TCP connection and complete the TLS handshake, before the site does any work. blackbox records these as 0 when it never got through at all -- so a drop to zero here, rather than a spike, is the signature of a blocked or dropped connection. Steady non-zero values that are simply large mean a distant or loaded server, which is a different problem.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROM}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 42
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROM}"
+          },
+          "legendFormat": "{{phase}}",
+          "expr": "probe_http_duration_seconds{instance=\"$site\", phase=~\"connect|tls|resolve\"}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "noValue": "no data",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "text",
+      "title": "How to read a failure here",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 42
+      },
+      "options": {
+        "mode": "markdown",
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false
+        },
+        "content": "**Work down this list before concluding the site is down.**\n\n| What you see | What it usually means |\n|---|---|\n| Connection-level failures high, HTTP-error failures 0 | Nothing reached the server. A firewall is dropping this machine (rate limit, fail2ban, CSF), or the host is unreachable. **The site may be perfectly fine for everyone else.** |\n| HTTP-error failures high | The server replied and refused. Its own problem: 500, 403, a WAF rule. Check the site's error log. |\n| 'Getting connected' drops to 0 | The connection never completed. Same as the first row. |\n| Slowest response pinned at exactly 20s | Probes are being cut off by the scrape timeout, so the true time is *at least* that. Not a measurement, a floor. |\n| Median low, 95th percentile high | Intermittent, not structurally slow. Look for cron jobs, backups, a noisy neighbour on shared hosting. |\n| Transfer dominates 'Where the time goes' | Page weight, not server speed. Check compression and image sizes. |\n\n**This stack only watches while this machine is awake**, so blank stretches in the timeline are gaps in observation, not proven uptime. See `docs/Decisions.md` D-014.\n\n**Before escalating:** load the site from a phone on mobile data. If it works there and not here, the problem is between this machine and the server."
       }
     }
   ]
