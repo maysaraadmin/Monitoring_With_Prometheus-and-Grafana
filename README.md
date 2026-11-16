@@ -23,6 +23,21 @@ cp prometheus/targets/sites.yml.example prometheus/targets/sites.yml
 docker compose restart prometheus
 ```
 
+**Each site then has its own dashboard**, at
+
+```
+http://localhost:3001/d/website-monitoring/website-monitoring?var-site=https://yoursite.com
+```
+
+Bookmark one URL per site. It is a single templated dashboard, not a file per site, so a new
+site appears in the `Site` dropdown as soon as you add it to `sites.yml` — nothing per-site has
+to be created. The top of the page also lists every site at once in one table.
+
+Per site you get: status, uptime over the selected range, HTTP code, days until the TLS
+certificate expires, an availability timeline, total response time, and a breakdown of where
+that time went (DNS, connect, TLS, server processing, transfer) — which is the panel that tells
+you *why* a site got slow.
+
 ### 2. Host metrics (CPU, memory, disk) — needs one command per server
 
 Prometheus *pulls*, so it must reach each server's node-exporter. Dialling out
