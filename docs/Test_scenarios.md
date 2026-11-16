@@ -181,6 +181,33 @@ it is marked *(manual)* in `docs/Implementation.md` and carries a `T0.x` row her
 | T5.S1 | S5.1 | confirm the loopback assumption is stated beside the `ports:` entries in `docker-compose.yml`, not only in the docs | a comment is present at each binding | ⬜ |
 | T5.S2 | S5.2 | confirm the placeholder check cannot be bypassed by leaving the setting absent rather than placeholder | both absent and placeholder values fail | ⬜ |
 
+## Sprint 6 — Container monitoring
+| ID | Covers | Type | Scenario | Expected | Status |
+|---|---|---|---|---|---|
+| T6.1 | AC6.1.1 | integration | `docker compose ps` with cAdvisor added | cAdvisor `Up`, with no published host port | ⬜ |
+| T6.2 | AC6.1.2 | integration | from the Prometheus container, curl cAdvisor's `/metrics` by container name | responds over the `monitoring` network | ⬜ |
+| T6.3 | AC6.1.3 | integration | after an hour, query cAdvisor's own CPU rate and working-set memory | both within the configured limits | ⬜ |
+| T6.4 | AC6.1.4, S6.4 | static | grep `docker-compose.yml` for `cadvisor.*latest`, and read its CPU/memory limits and housekeeping interval | no `latest`; limits and interval explicitly set | ⬜ |
+| T6.5 | AC6.2.1 | integration | read `/api/v1/targets` | the `cadvisor` target is `up` | ⬜ |
+| T6.6 | AC6.2.2 | integration | `count(count by (name) (container_memory_working_set_bytes{name!=""}))` against `docker ps \| wc -l` | the two agree | ⬜ |
+| T6.7 | AC6.2.3 | integration | query every metric family the Sprint 6 dashboard and alerts rely on, on this cgroup v2 host | each returns series; any that does not is recorded as unavailable and its panel or alert removed, not left silently empty | ⬜ |
+| T6.8 | AC6.2.4 | integration | measure TSDB size a week after the cAdvisor job is added | the increase is recorded against the AC4.3.2 retention budget | ⬜ |
+| T6.9 | AC6.3.1 | integration | recreate Grafana, then `GET /api/search?type=dash-db` and run a panel query | the container dashboard is listed and its panels return data | ⬜ |
+| T6.10 | AC6.3.2 | integration | restart a throwaway container three times in five minutes | the restart-loop alert fires | ⬜ |
+| T6.11 | AC6.3.4, S6.5 | integration | on a healthy host that has expected-exited containers, read `/api/v1/alerts` | no container alert is firing — the six exited deploykit containers must not alert forever | ⬜ |
+| T6.12 | AC6.3.5 | integration | query the memory-limit rule against a container with no memory limit set | no alert, and no divide-by-zero or absent-value artefact | ⬜ |
+| T6.13 | AC6.4.1 | static | read `docs/Decisions.md` | a dated decision records the socket choice and what socket access would let an attacker do | ⬜ |
+| T6.14 | AC6.4.2 | static | grep `docker-compose.yml` for `docker.sock` | only cAdvisor, or its proxy, mounts it | ⬜ |
+| T6.15 | AC6.4.4 | integration | re-run the AC5.2.1 loopback check after adding cAdvisor | still passes, so Sprint 6 has not undone Sprint 1 | ⬜ |
+
+### Security tests
+| ID | Covers threat | Scenario | Expected | Status |
+|---|---|---|---|---|
+| T6.S1 | S6.1, AC6.4.3 | assert the check reaches the control: through whatever socket access cAdvisor is given, attempt a *write* operation (create a container), and confirm cAdvisor keeps scraping afterwards | refused if a proxy is in use, with cAdvisor still working. If the raw socket is mounted this test will **succeed**, which is the finding, not a pass — `:ro` on a socket mount does not restrict the API | ⬜ |
+| T6.S2 | S6.2 | from another device on the LAN, curl cAdvisor's port on this host | refused — the port must not be published at all | ⬜ |
+| T6.S3 | S6.3 | read the labels and image tags actually present on this host's 11 containers, then check which land in metric labels | nothing secret reaches the TSDB, the F4.4 backup, or an alert notification | ⬜ |
+| T6.S4 | AC6.3.3 | run a test container under a tight memory limit until the kernel OOM-kills it | the OOM alert fires and names that container | ⬜ |
+
 ---
 
 Known exceptions, deliberate: S0.8 (the 30s Gmail retry loop) and S0.9 (`latest` image tags)

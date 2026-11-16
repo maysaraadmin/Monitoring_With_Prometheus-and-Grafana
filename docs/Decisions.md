@@ -126,3 +126,23 @@ Linux server where node-exporter is correct by construction.
 **Why it is not decided here:** It changes what the project is for, which is the user's call, not
 an executor's. Planned as F4.1 with AC4.1.1 so Sprint 4 cannot close without an answer.
 **Status:** Open — blocks F4.1
+
+## D-012 Container monitoring is in scope, as Sprint 6 (2026-11-16)
+**Decision:** Add per-container monitoring with cAdvisor, planned as Sprint 6. The stack's
+purpose widens from "monitor a Linux server" to "monitor this Docker host, including the
+containers on it".
+**Why:** The user asked whether the stack monitors all Docker containers. It monitors none.
+Verified the same day: of 624 metric names in Prometheus, zero begin with `container_`,
+`docker_` or `engine_`, while 11 containers were running. node-exporter measures a host and has
+no concept of Docker; blackbox probes URLs from outside. Nothing in Sprints 0–5 closed this, so
+it needed its own sprint rather than a line in an existing one.
+**Rejected alternatives:**
+- *The Docker daemon's own `/metrics` endpoint.* Far lighter and needs no socket mount, but it reports daemon-level metrics, not per-container CPU and memory, so it does not answer "which container is eating the machine". It is still worth enabling later as a cheap addition.
+- *Doing it inside Sprint 1.* Tempting, since both touch exposure, but it would mix adding a privilege with removing several, and Sprint 1's value is that it only ever subtracts access.
+- *Not doing it.* The user has 11 containers across several projects on one workstation and no visibility into any of them.
+**Consequence to respect:** cAdvisor needs the Docker socket, which is **root on the host** — a
+larger privilege than everything else in this stack combined, and `:ro` on the mount does not
+restrict the API (S6.1). Sprint 6 must not publish a port (AC6.1.1, AC6.4.4) and must decide
+between the raw socket and a read-only proxy (F6.4). Six of the 11 containers belong to
+unrelated projects; monitoring them means this repo holds an inventory of them.
+**Status:** Active — Sprint 6 planned, nothing built

@@ -42,6 +42,7 @@ See D-001.
 | 3 | CI config validation | ⬜ | |
 | 4 | Real targets, pinned images, retention and restore | ⬜ | |
 | 5 | Go-live and runbook | ⬜ | |
+| 6 | Container monitoring (cAdvisor) | ⬜ | |
 
 Sprints 1–5 were approved by the user on 2026-11-16 and planned in detail below.
 Deployment context confirmed the same day: **one Windows workstation behind NAT** (D-010),
@@ -383,6 +384,77 @@ this stack from the runbook alone, and a forgotten secret cannot pass as configu
 **Acceptance criteria**
 - AC5.3.1: Given the SMTP secret still holds a placeholder, when the stack starts, then the check fails with a message naming the setting.
 - AC5.3.2: Given every secret is set to a real value, when the stack starts, then the check passes.
+
+### Progress notes
+
+## Sprint 6: Container monitoring
+**Definition of done:** Grafana shows per-container CPU, memory, restarts and network for every
+container on this host, and an alert fires when a container restart-loops or is OOM-killed.
+Adding it has not widened the stack's network exposure.
+
+**Why it is a separate sprint:** nothing in Sprints 0–5 monitors containers at all. Verified on
+2026-11-16 — of 624 metric names in Prometheus, zero begin with `container_`, `docker_` or
+`engine_`, while 11 containers were running on the host. node-exporter measures a *host* and has
+no concept of Docker; blackbox probes URLs from outside. This is a scope change from "monitor a
+Linux server" to "monitor this Docker host", recorded as D-012.
+
+**Needs from the user:** nothing, but see D-012 — most of the 11 containers belong to unrelated
+projects (Forgejo, Gitea, deploykit). Confirm they should be in scope.
+
+**Runtime facts confirmed on this host, 2026-11-16** (the plan depends on them):
+Docker Desktop, kernel `6.18.58.1-microsoft-standard-WSL2`, **cgroup v2** with the `cpuset cpu
+io memory hugetlb pids rdma` controllers on the unified hierarchy. `/var/run/docker.sock` is
+mountable and `/dev/kmsg` exists. cAdvisor needs all three, and cgroup v2 is the reason F6.2
+verifies which metrics actually arrive instead of assuming the documented set.
+
+### F6.1 Add cAdvisor as a sixth service
+- [ ] Add `gcr.io/cadvisor/cadvisor` to `docker-compose.yml` on the `monitoring` network, pinned to a version (not `latest`, per F4.2)
+- [ ] Mount what it needs read-only: `/`, `/var/run`, `/sys`, `/var/lib/docker`, and `/dev/disk`
+- [ ] Do **not** publish its port — Prometheus reaches it over the Compose network, exactly as with node-exporter and blackbox after Sprint 1
+- [ ] Set a memory and CPU limit; cAdvisor is the heaviest component in this stack and will happily use a whole core on a busy host
+- [ ] Set `--housekeeping_interval` and disable collectors not in use, to keep that cost down
+
+**Acceptance criteria**
+- AC6.1.1: Given the stack is up, when `docker compose ps` is read, then cAdvisor is `Up` and has no published host port.
+- AC6.1.2: Given cAdvisor is running, when Prometheus queries it by container name over the `monitoring` network, then its `/metrics` endpoint responds.
+- AC6.1.3: Given the CPU and memory limits, when the stack has been running for an hour on this host, then cAdvisor's own `container_memory_working_set_bytes` and CPU rate are within the limits set.
+- AC6.1.4: Given `docker-compose.yml`, when it is grepped for `cadvisor.*latest`, then there is no match.
+
+### F6.2 Scrape it, and verify what cgroup v2 actually provides
+- [ ] Add a `cadvisor` scrape job to `prometheus/prometheus.yml`
+- [ ] Confirm which `container_*` metric families actually appear on cgroup v2, and write the list into the handoff. Several per-container disk-I/O metrics that cAdvisor documents are absent or empty under cgroup v2, and a dashboard built on the documented set will show silently empty panels
+- [ ] Add a `relabel_configs` rule dropping the noisiest unused series if the TSDB growth is material against the F4.3 retention budget
+
+**Acceptance criteria**
+- AC6.2.1: Given the scrape job, when `/api/v1/targets` is queried, then the `cadvisor` target is `up`.
+- AC6.2.2: Given cAdvisor is scraped, when `count(count by (name) (container_memory_working_set_bytes{name!=""}))` is queried, then the result equals the number of running containers on the host.
+- AC6.2.3: Given cgroup v2, when each metric family the Sprint 6 dashboard and alerts depend on is queried, then every one returns series — and any that does not is recorded in the handoff as unavailable on this runtime, with the panel or alert removed rather than left empty.
+- AC6.2.4: Given the new series, when the TSDB size is measured a week later, then the increase is recorded against the retention budget from AC4.3.2.
+
+### F6.3 Dashboard and container alerts
+- [ ] Provision a container dashboard under `grafana/provisioning/dashboards/` (Grafana dashboard 14282 is a reasonable base), following the panel and state rules in `docs/UI_guidelines.md`
+- [ ] Alert on a container restart loop: `increase(container_start_time_seconds[15m])` crossing a threshold, or the equivalent restart counter
+- [ ] Alert on a container OOM kill
+- [ ] Alert on a container at its memory limit, as a ratio of `container_spec_memory_limit_bytes`, not an absolute byte count — the mistake G-002 made
+- [ ] Exclude containers that are expected to exit, so stopped deploykit containers do not alert forever (the D-004 trap again)
+
+**Acceptance criteria**
+- AC6.3.1: Given the dashboard is provisioned, when a fresh Grafana container starts, then it is listed by `GET /api/search?type=dash-db` and its panels return data.
+- AC6.3.2: Given a container is deliberately restarted three times in five minutes, when the rules are evaluated, then the restart-loop alert fires.
+- AC6.3.3: Given a test container is OOM-killed by running it under a tight memory limit, when the rules are evaluated, then the OOM alert fires and names that container.
+- AC6.3.4: Given a healthy host with containers that are expected to be exited, when the rules are evaluated, then no container alert is firing.
+- AC6.3.5: Given the memory-limit alert, when a container has no limit set, then the rule does not fire with a divide-by-zero or absent-value artefact.
+
+### F6.4 Contain the Docker socket exposure
+- [ ] Decide between mounting `/var/run/docker.sock:ro` directly and putting a read-only socket proxy in front of it
+- [ ] Whichever is chosen, record it in `docs/Decisions.md` with the reasoning, because this is the single largest privilege in the stack
+- [ ] Confirm the socket is not reachable from anywhere except cAdvisor
+
+**Acceptance criteria**
+- AC6.4.1: Given the choice is made, when `docs/Decisions.md` is read, then a dated decision records it and states what an attacker who reached the socket could do.
+- AC6.4.2: Given cAdvisor is running, when the compose file is read, then no service other than cAdvisor (or its proxy) mounts the Docker socket.
+- AC6.4.3: Given a socket proxy is used, when a write operation is attempted through it, then it is refused while cAdvisor keeps working.
+- AC6.4.4: Given the stack is up, when the loopback check from AC5.2.1 runs, then it still passes — adding cAdvisor has not published a new port.
 
 ### Progress notes
 

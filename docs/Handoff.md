@@ -100,8 +100,10 @@ issues since last sprint: 3 (the stack not starting, the dashboard not showing, 
 push) · Open security findings from the baseline: 9 (2 High, 5 Medium, 2 Low after the D-010
 re-rating) · Open issues: 5 of 10 · Baseline tests: 27 scenario rows, 16 passing.
 
-**Doc set after planning Sprints 1–5:** 75 acceptance criteria · 29 features · 96 test rows ·
-25 threats · 11 decisions · 7 docs.
+**Doc set after planning Sprints 1–6:** 92 acceptance criteria · 33 features · 115 test rows ·
+30 threats · 12 decisions · 7 docs. Sprint 6 (container monitoring) was added later the same
+day, after the user asked whether the stack monitors Docker containers — it monitors none. See
+D-012.
 
 All counted mechanically on 2026-11-16, not estimated. Checks that passed at the time of writing:
 every one of the 75 acceptance criteria appears in `Test_scenarios.md`; every one of the 25

@@ -145,6 +145,28 @@ step a command with an expected result, so the answer is demonstrated rather tha
 
 ---
 
+## Sprint 6 — Container monitoring
+### Threats
+| ID | Threat | Area | Severity | Control | Test | Status |
+|---|---|---|---|---|---|---|
+| S6.1 | **The Docker socket is root on the host.** cAdvisor needs `/var/run/docker.sock`, and anything that can talk to that socket can start a privileged container, mount the host filesystem and read or change anything on it. `:ro` on the mount does *not* make it read-only in any useful sense — it stops the file being replaced, not the API being used to write. This single mount is a larger privilege than everything else in this stack combined | Docker | **High** | A read-only socket proxy that allows only the endpoints cAdvisor reads, rather than the raw socket; cAdvisor on no published port; a decision recorded under F6.4 stating what socket access means | T6.S1 | ⬜ |
+| S6.2 | cAdvisor's own metrics endpoint discloses every container's name, image, labels, command and mount paths — a complete inventory of what runs on the host, including the unrelated projects. Published, it is better reconnaissance than node-exporter | cAdvisor | Medium | Do not publish the port at all; it is only needed on the `monitoring` network | T6.S2 | ⬜ |
+| S6.3 | Container labels become metric labels, so anything secret in a label or an image tag lands in the TSDB, in the backup from F4.4, and in any alert notification | Secrets | Medium | Check the labels actually present on the 11 containers before enabling label collection; drop label sets not needed via `metric_relabel_configs` | T6.S3 | ⬜ |
+| S6.4 | cAdvisor is the heaviest component here and reads every cgroup on every housekeeping interval. Mis-tuned, the monitoring becomes the load — and on a workstation that is also the thing being monitored, it distorts its own measurements | cAdvisor | Medium | CPU and memory limits, a sane `--housekeeping_interval`, unused collectors disabled, verified by AC6.1.3 | T6.4 | ⬜ |
+| S6.5 | Container alerts that fire forever on containers which are *expected* to be exited — this host has six — repeat the D-004 and G-002 mistake and retrain the operator to ignore alerts | Alerting | Medium | Exclude expected-exited containers explicitly; AC6.3.4 requires a quiet healthy host | T6.11 | ⬜ |
+
+### Business-logic abuse cases
+This sprint is the first that grants a real privilege rather than merely exposing data, so the
+questions change shape:
+
+- **What can an attacker do with the capability we are adding?** With the Docker socket: everything. Start a container with `--privileged` and `-v /:/host`, and the host is theirs. This is why S6.1 is High under D-010 even though nothing new is published — the threat is not network reach, it is that a container breakout or a compromised cAdvisor image escalates straight to host root.
+- **Does the new component widen the network surface?** It must not. AC6.1.1 and AC6.4.4 both assert no published port, and AC6.4.4 deliberately re-runs the Sprint 5 loopback check so adding a service cannot quietly undo Sprint 1.
+- **Does new data leak anything?** Container labels and image tags are copied into metric labels and travel into backups and notifications (S6.3). Worth reading the actual labels on this host's 11 containers before turning label collection on.
+- **Can the monitoring now harm what it monitors?** Yes, newly so (S6.4). cAdvisor on a workstation competes with the work being measured.
+- **Is any of this in scope?** Six of the 11 containers belong to unrelated projects. Monitoring them is probably wanted, but it means this repo now holds an inventory of those projects. See D-012.
+
+---
+
 ## Audit (2026-11-16)
 First pass, done by reading the configs and probing the running stack. **Not a penetration
 test:** nothing was attacked from off-host, so the `T0.S*` rows in `docs/Test_scenarios.md` are
