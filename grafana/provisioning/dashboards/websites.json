@@ -9,7 +9,7 @@
   "timezone": "browser",
   "editable": true,
   "schemaVersion": 39,
-  "version": 6,
+  "version": 7,
   "refresh": "1m",
   "time": {
     "from": "now-24h",
@@ -63,7 +63,7 @@
     {
       "type": "table",
       "title": "Every monitored site",
-      "description": "All sites at once, regardless of the dropdown. Add sites in prometheus/targets/sites.yml, then restart Prometheus.",
+      "description": "All monitored sites, regardless of the dropdown. Sorted so anything DOWN is at the top. Click any column header to re-sort -- \"Cert expires\" is the other useful one. Sites come from prometheus/targets/sites.yml.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROM}"
@@ -266,7 +266,13 @@
         "showHeader": true,
         "footer": {
           "show": false
-        }
+        },
+        "sortBy": [
+          {
+            "displayName": "Status",
+            "desc": false
+          }
+        ]
       }
     },
     {

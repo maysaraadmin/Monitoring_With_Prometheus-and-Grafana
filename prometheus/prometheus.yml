@@ -52,8 +52,13 @@ scrape_configs:
     # timeout to blackbox, so the default capped every probe at ~9.5s: a site
     # taking 12s was recorded as a FAILURE, indistinguishable from one that was
     # actually down, and max latency read as a flat 9.5s ceiling. 20s lets a slow
-    # site be measured as slow. Must stay <= scrape_interval (30s).
+    # site be measured as slow. Must stay <= scrape_interval.
     scrape_timeout: 20s
+    # 5m, not the 30s global, because this job now carries 168 sites. At 30s that
+    # would be 336 requests a minute, and we already learned one of these hosts
+    # blocks this machine when it sees a burst (docs/Issues.md I-014). 5m is ~0.6
+    # requests/second in total and still gives 288 samples per site per day.
+    scrape_interval: 5m
     # The deliberately-failing demo target (http://example.com:8080) was removed
     # on the user's instruction 2026-11-16, now that real sites are monitored.
     # This supersedes the website half of D-004 -- see D-016.

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Generate one dedicated Grafana dashboard per monitored website.
 
-    python scripts/make-site-dashboards.py
+    python scripts/make-site-dashboards.py                      # all probed sites
+    python scripts/make-site-dashboards.py https://a.com ...    # only these
     docker compose restart grafana
 
 Writes grafana/provisioning/dashboards/site-<slug>.json for every site currently
@@ -104,7 +105,23 @@ def main():
     with open(TEMPLATE, encoding='utf-8') as fh:
         template = json.load(fh)
 
-    sites = live_sites()
+    named = sys.argv[1:]
+    sites = named or live_sites()
+    # Guard: 168 sites x 36 KB would be 5.8 MB of generated JSON and 168 entries in
+    # Grafana's list. The templated dashboard already gives each site its own URL, so
+    # per-site files are opt-in above a handful. Name the sites you want instead.
+    LIMIT = 12
+    if len(sites) > LIMIT and len(sys.argv) == 1:
+        for line in [
+            '%d sites are being probed -- that would generate %d dashboards (~%.1f MB).'
+            % (len(sites), len(sites), len(sites) * 36181 / 1048576),
+            'The templated "Website Monitoring" dashboard already covers every site at',
+            '  /d/website-monitoring/website-monitoring?var-site=<url>',
+            'To generate files for specific sites anyway, name them:',
+            '  python %s https://a.com https://b.com' % sys.argv[0],
+        ]:
+            print(line, file=sys.stderr)
+        sys.exit(1)
     wanted = {}
     for site in sites:
         wanted[PREFIX + slug(site) + '.json'] = build(template, site)
@@ -122,6 +139,13 @@ def main():
         print('%-8s %-28s uid=%-22s /d/%s/%s' % (
             'updated' if before == after else ('wrote' if before is None else 'changed'),
             name, dash['uid'], dash['uid'], dash['uid']))
+
+    # Prune only when generating for EVERY probed site. With an explicit list the
+    # other dashboards were not asked about, and deleting them would be a surprise.
+    if named:
+        print('\n%d dashboard(s) written. Other site-*.json files left alone.' % len(wanted))
+        print('Now: docker compose restart grafana')
+        return
 
     # Only ever remove files this script owns.
     for name in sorted(os.listdir(DASH_DIR)):
